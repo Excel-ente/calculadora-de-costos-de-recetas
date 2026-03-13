@@ -1,0 +1,19 @@
+/* static/css/custom.css */
+
+/* Estilos para el botón btn-default */
+.btn-default {
+    background-color: rgb(58, 193, 140);
+    border-color: rgb(58, 193, 140);
+    color: #fff;
+}
+
+.btn-default:hover {
+    background-color: rgb(194, 241, 223);
+    border-color: rgb(194, 241, 223);
+    color: rgb(10, 73, 49);
+}
+
+/* Cambiar el color de la fuente a negro para breadcrumb-item active */
+.breadcrumb-item.active {
+    color: #000; /* Color negro */
+}

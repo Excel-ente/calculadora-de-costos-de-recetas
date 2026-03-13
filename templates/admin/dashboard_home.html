@@ -1,0 +1,950 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %} Calculadora de costos de recetas | EXCEL-ENTE{% endblock %}
+
+{% block extrastyle %}
+<style>
+    #content, .content, #content-main, .main, [id="content"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .dashboard-container {
+        padding: 15px;
+        background: #f8f9fa;
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .metric-card h3 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        color: #2c3e50;
+        border-bottom: 2px solid #e74c3c;
+        padding-bottom: 8px;
+        font-size: 1.1em;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+    }
+    
+    .stat-box.green {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .stat-box.blue {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .stat-box.orange {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+    
+    .stat-number {
+        font-size: 1.8em;
+        font-weight: bold;
+        margin: 8px 0;
+    }
+    
+    .stat-label {
+        font-size: 0.85em;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .receta-item {
+        padding: 10px;
+        border-left: 3px solid #3498db;
+        margin-bottom: 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+    
+    .receta-item:hover {
+        background: #e9ecef;
+        border-left-color: #e74c3c;
+        transform: translateX(3px);
+    }
+    
+    .receta-nombre {
+        font-weight: bold;
+        color: #2c3e50;
+        font-size: 1.1em;
+        margin-bottom: 5px;
+    }
+    
+    .receta-detalles {
+        color: #7f8c8d;
+        font-size: 0.9em;
+    }
+    
+    .receta-precio {
+        float: right;
+        background: #3498db;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    
+    .alert-item {
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 5px;
+        border-left: 3px solid;
+    }
+    
+    .alert-warning {
+        background: #fff3cd;
+        border-left-color: #ffc107;
+        color: #856404;
+    }
+    
+    .alert-danger {
+        background: #f8d7da;
+        border-left-color: #dc3545;
+        color: #721c24;
+    }
+    
+    .producto-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .producto-item:last-child {
+        border-bottom: none;
+    }
+    
+    .producto-nombre {
+        font-weight: 500;
+        color: #2c3e50;
+        font-size: 0.9em;
+    }
+    
+    .producto-stats {
+        color: #7f8c8d;
+        font-size: 0.8em;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 10px;
+        font-size: 0.75em;
+        font-weight: bold;
+        margin-left: 5px;
+    }
+    
+    .badge-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .badge-success {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .badge-warning {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .badge-danger {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 40px;
+        color: #95a5a6;
+        font-style: italic;
+    }
+    
+    .chart-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .progress {
+        height: 25px;
+        border-radius: 12px;
+        background: #e9ecef;
+        margin: 10px 0;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        color: white;
+        font-weight: bold;
+        font-size: 0.85em;
+        transition: width 0.6s ease;
+    }
+    
+    .section-title {
+        font-size: 1.4em;
+        color: #2c3e50;
+        margin: 20px 0 15px 0;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e74c3c;
+    }
+    
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        gap: 15px;
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 10px;
+        }
+        
+        .grid-2 {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        /* 2 KPIs por línea en móviles */
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .stat-box {
+            padding: 12px 8px;
+        }
+        
+        .stat-number {
+            font-size: 1.4em;
+        }
+        
+        .stat-label {
+            font-size: 0.75em;
+        }
+        
+        .metric-card {
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .metric-card h3 {
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+        
+        .section-title {
+            font-size: 1.2em;
+            margin: 15px 0 10px 0;
+        }
+        
+        .btn-action {
+            padding: 3px 8px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        
+        .btn-action i {
+            display: none;
+        }
+        
+        .receta-nombre {
+            font-size: 0.85em;
+        }
+        
+        .receta-detalles {
+            font-size: 0.75em;
+        }
+        
+        .producto-nombre {
+            font-size: 0.85em;
+        }
+        
+        .producto-stats {
+            font-size: 0.75em;
+        }
+        
+        .badge {
+            font-size: 0.65em;
+            padding: 2px 6px;
+        }
+        
+        .receta-precio {
+            font-size: 0.85em;
+        }
+        
+        /* Header más compacto en móviles */
+        h1 {
+            font-size: 1.3em !important;
+            margin-bottom: 10px !important;
+        }
+        
+        h1 i {
+            display: none;
+        }
+
+        .dashboard-top-actions {
+            justify-content: stretch;
+        }
+
+        .dashboard-top-actions .btn-action {
+            margin-left: 0;
+            flex: 1 1 calc(50% - 5px);
+            text-align: center;
+        }
+
+        .qr-modal-card {
+            padding: 20px 16px;
+        }
+
+        .qr-link-box {
+            flex-direction: column;
+        }
+    }
+    
+    /* Botones de acción */
+    .btn-action {
+        display: inline-block;
+        padding: 4px 12px;
+        font-size: 12px;
+        background: #3498db;
+        color: white !important;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.2s;
+        margin-left: 10px;
+        border: none;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    
+    .btn-action:hover {
+        background: #2980b9;
+        color: white !important;
+        text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .btn-action i {
+        margin-right: 4px;
+    }
+    
+    .receta-item {
+        position: relative;
+    }
+    
+    .receta-nombre {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .dashboard-top-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .btn-action.qr-trigger {
+        background: #16a085;
+    }
+
+    .btn-action.qr-trigger:hover {
+        background: #12806a;
+    }
+
+    .qr-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(44, 62, 80, 0.55);
+        padding: 20px;
+        z-index: 9999;
+    }
+
+    .qr-modal.is-open {
+        display: flex;
+    }
+
+    .qr-modal-card {
+        width: min(100%, 420px);
+        background: white;
+        border-radius: 14px;
+        padding: 24px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+        position: relative;
+        text-align: center;
+    }
+
+    .qr-modal-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        border: none;
+        background: transparent;
+        font-size: 28px;
+        line-height: 1;
+        color: #7f8c8d;
+        cursor: pointer;
+    }
+
+    .qr-modal-title {
+        margin: 0 0 8px 0;
+        color: #2c3e50;
+        font-size: 1.3em;
+    }
+
+    .qr-modal-text {
+        color: #5d6d7e;
+        font-size: 0.95em;
+        margin-bottom: 16px;
+    }
+
+    .qr-image {
+        width: 240px;
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+        padding: 10px;
+        background: white;
+        margin-bottom: 16px;
+    }
+
+    .qr-link-box {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .qr-link-input {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #dfe6e9;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 0.9em;
+        color: #2c3e50;
+        background: #f8f9fa;
+    }
+
+    .qr-status {
+        min-height: 20px;
+        margin-bottom: 12px;
+        color: #16a085;
+        font-size: 0.9em;
+    }
+
+    .qr-help {
+        margin: 10px 0 0 0;
+        color: #7f8c8d;
+        font-size: 0.85em;
+    }
+    
+    .receta-nombre-text {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .receta-actions {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-top-actions">
+        <button type="button" class="btn-action qr-trigger" id="abrirQrAcceso">
+            <i class="fas fa-qrcode"></i> Acceso por QR
+        </button>
+        <a href="{% url 'simulador_fabricacion' %}" class="btn-action" style="background-color:#6f42c1;">🔧 Simulador de Fabricación</a>
+    </div>
+
+    <div class="qr-modal" id="qrAccesoModal" aria-hidden="true">
+        <div class="qr-modal-card" role="dialog" aria-modal="true" aria-labelledby="qrAccesoTitulo">
+            <button type="button" class="qr-modal-close" id="cerrarQrAcceso" aria-label="Cerrar">&times;</button>
+            <h3 class="qr-modal-title" id="qrAccesoTitulo">Escanear desde el celular</h3>
+            <p class="qr-modal-text">Conectá el celular a la misma red Wi-Fi y escaneá este código para abrir el panel.</p>
+            <img class="qr-image" src="data:image/png;base64,{{ acceso_movil_qr_base64 }}" alt="Código QR para ingresar al panel desde el celular">
+            <div class="qr-link-box">
+                <input type="text" class="qr-link-input" id="accesoMovilUrl" value="{{ acceso_movil_url }}" readonly>
+                <button type="button" class="btn-action" id="copiarAccesoMovil">Copiar link</button>
+            </div>
+            <div class="qr-status" id="estadoCopiaQr"></div>
+            <a href="{{ acceso_movil_url }}" class="btn-action" target="_blank" rel="noopener">
+                <i class="fas fa-external-link-alt"></i> Abrir link
+            </a>
+            <p class="qr-help">IP detectada: {{ acceso_movil_host }}:8000</p>
+        </div>
+    </div>
+
+
+    <!-- ESTADÍSTICAS GENERALES -->
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-label">Total Recetas</div>
+            <div class="stat-number">{{ total_recetas }}</div>
+        </div>
+        
+        <div class="stat-box green">
+            <div class="stat-label">Total Productos</div>
+            <div class="stat-number">{{ total_productos }}</div>
+        </div>
+        
+        <div class="stat-box blue">
+            <div class="stat-label">Costo Promedio</div>
+            <div class="stat-number">{{ moneda }}{{ promedio_costo_receta|floatformat:0|intcomma }}</div>
+        </div>
+        
+        <div class="stat-box orange">
+            <div class="stat-label">Rentabilidad Promedio</div>
+            <div class="stat-number">{{ promedio_rentabilidad|floatformat:1 }}%</div>
+        </div>
+    </div>
+    
+    <!-- ALERTAS -->
+    {% if tiene_alertas %}
+    <div class="metric-card">
+        <h3><i class="fas fa-exclamation-triangle"></i> Alertas de Recetas — Inconsistencias detectadas</h3>
+        <p style="margin:6px 0 10px 0; color:#6c757d; font-size:0.9em;">Se muestran aquí recetas con problemas de datos (unidades incompatibles, ingredientes con costo $0, cantidades inválidas o recetas sin ingredientes).</p>
+        {% for alerta in recetas_problematicas %}
+        <div class="alert-item alert-{{ alerta.tipo }}">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="flex: 1;">
+                    <strong>{{ alerta.receta.nombre }}</strong>
+                    <br>
+                    <i class="fas fa-arrow-right"></i> {{ alerta.problema }}
+                    <br>
+                    <small>{{ alerta.detalle }}</small>
+                </div>
+                <div style="display: flex;">
+                    <a href="{% url 'descargar' alerta.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </a>
+                    <a href="{% url 'admin:administracion_receta_change' alerta.receta.pk %}" class="btn-action" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> Ver Receta
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="grid-2">
+        <!-- RECETAS MÁS CARAS -->
+        <div class="metric-card">
+            <h3><i class="fas fa-dollar-sign"></i> Top 5 Recetas Más Caras</h3>
+            {% if recetas_mas_caras %}
+                {% for item in recetas_mas_caras %}
+                <div class="receta-item">
+                    <div class="receta-nombre">
+                        <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
+                        <div class="receta-actions">
+                            <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}</span>
+                            <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                            <a href="{% url 'admin:administracion_receta_change' item.receta.pk %}" class="btn-action" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                    <div class="receta-detalles">
+                        Porciones: {{ item.porciones }} | 
+                        Costo/porción: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} |
+                        Rentabilidad: {{ item.rentabilidad }}%
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+        
+        <!-- RECETAS MÁS BARATAS -->
+        <div class="metric-card">
+            <h3><i class="fas fa-tags"></i> Top 5 Recetas Más Económicas</h3>
+            {% if recetas_mas_baratas %}
+                {% for item in recetas_mas_baratas %}
+                <div class="receta-item">
+                    <div class="receta-nombre">
+                        <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
+                        <div class="receta-actions">
+                            <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}</span>
+                            <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                            <a href="{% url 'admin:administracion_receta_change' item.receta.pk %}" class="btn-action" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                    <div class="receta-detalles">
+                        Porciones: {{ item.porciones }} | 
+                        Costo/porción: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} |
+                        Rentabilidad: {{ item.rentabilidad }}%
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="grid-2">
+        <!-- MAYOR RENTABILIDAD -->
+        <div class="metric-card">
+            <h3><i class="fas fa-percentage"></i> Top 5 Mayor Rentabilidad</h3>
+            {% if recetas_mayor_rentabilidad %}
+                {% for item in recetas_mayor_rentabilidad %}
+                <div class="receta-item">
+                    <div class="receta-nombre">
+                        <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
+                        <div class="receta-actions">
+                            <span class="badge badge-success">{{ item.rentabilidad }}%</span>
+                            <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                            <a href="{% url 'admin:administracion_receta_change' item.receta.pk %}" class="btn-action" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                    <div class="receta-detalles">
+                        Costo: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} | 
+                        Venta: {{ moneda }}{{ item.precio_venta|floatformat:2|intcomma }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+        
+        <!-- MENOR RENTABILIDAD -->
+        <div class="metric-card">
+            <h3><i class="fas fa-chart-line"></i> Top 5 Menor Rentabilidad</h3>
+            {% if recetas_menor_rentabilidad %}
+                {% for item in recetas_menor_rentabilidad %}
+                <div class="receta-item">
+                    <div class="receta-nombre">
+                        <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
+                        <div class="receta-actions">
+                            <span class="badge badge-warning">{{ item.rentabilidad }}%</span>
+                            <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </a>
+                            <a href="{% url 'admin:administracion_receta_change' item.receta.pk %}" class="btn-action" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                    <div class="receta-detalles">
+                        Costo: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} | 
+                        Venta: {{ moneda }}{{ item.precio_venta|floatformat:2|intcomma }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- RECETAS MÁS COMPLEJAS -->
+    <div class="metric-card">
+        <h3><i class="fas fa-list"></i> Recetas con Más Ingredientes</h3>
+        {% if recetas_mas_ingredientes %}
+            {% for item in recetas_mas_ingredientes %}
+            <div class="receta-item">
+                <div class="receta-nombre">
+                    <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
+                    <div class="receta-actions">
+                        <span class="badge badge-primary">{{ item.num_ingredientes }} ingredientes</span>
+                        {% if item.num_gastos > 0 %}
+                        <span class="badge badge-warning">{{ item.num_gastos }} gastos</span>
+                        {% endif %}
+                        <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </a>
+                        <a href="{% url 'admin:administracion_receta_change' item.receta.pk %}" class="btn-action" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> Ver
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data">No hay datos disponibles</div>
+        {% endif %}
+    </div>
+    
+    <h2 class="section-title"><i class="fas fa-box"></i> Análisis de Insumos</h2>
+    
+    <div class="grid-2">
+        <!-- INSUMOS MÁS USADOS -->
+        <div class="metric-card">
+            <h3><i class="fas fa-fire"></i> Top 10 Insumos Más Usados</h3>
+            {% if productos_mas_usados %}
+                <div class="chart-container">
+                    {% for item in productos_mas_usados %}
+                    <div class="producto-item">
+                        <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
+                            <div style="flex: 1;">
+                                <div class="producto-nombre">
+                                    {{ forloop.counter }}. {{ item.producto.nombre }}
+                                    <span class="badge badge-primary">{{ item.veces_usado }}x</span>
+                                </div>
+                                <div class="producto-stats">
+                                    Cantidad total: {{ item.cantidad_total|floatformat:2 }} {{ item.producto.unidad_de_medida }} |
+                                    Costo total: {{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}
+                                </div>
+                            </div>
+                            <a href="{% url 'admin:administracion_producto_change' item.producto.pk %}" class="btn-action" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+        
+        <!-- INSUMOS MENOS USADOS -->
+        <div class="metric-card">
+            <h3><i class="fas fa-snowflake"></i> Top 10 Insumos Menos Usados</h3>
+            {% if productos_menos_usados %}
+                <div class="chart-container">
+                    {% for item in productos_menos_usados %}
+                    <div class="producto-item">
+                        <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
+                            <div style="flex: 1;">
+                                <div class="producto-nombre">
+                                    {{ forloop.counter }}. {{ item.producto.nombre }}
+                                    <span class="badge badge-warning">{{ item.veces_usado }}x</span>
+                                </div>
+                                <div class="producto-stats">
+                                    {{ item.producto.unidad_de_medida }}
+                                </div>
+                            </div>
+                            <a href="{% url 'admin:administracion_producto_change' item.producto.pk %}" class="btn-action" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Ver
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- INGREDIENTES POR COSTO -->
+    <div class="metric-card">
+        <h3><i class="fas fa-wallet"></i> Top 10 Ingredientes que Más Cuestan</h3>
+        {% if ingredientes_por_costo %}
+            {% for item in ingredientes_por_costo %}
+            <div class="receta-item">
+                <div class="receta-nombre">
+                    <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.producto.nombre }}</span>
+                    <div class="receta-actions">
+                        <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}</span>
+                        <a href="{% url 'admin:administracion_producto_change' item.producto.pk %}" class="btn-action" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> Ver
+                        </a>
+                    </div>
+                </div>
+                <div class="receta-detalles">
+                    Usado en {{ item.veces_usado }} receta{{ item.veces_usado|pluralize }} |
+                    Total usado: {{ item.cantidad_total|floatformat:2 }} {{ item.producto.unidad_de_medida }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-data">No hay datos disponibles</div>
+        {% endif %}
+    </div>
+    
+    <!-- INSUMOS SIN USAR -->
+    {% if productos_sin_usar %}
+    <div class="metric-card">
+        <h3><i class="fas fa-archive"></i> Insumos No Utilizados ({{ productos_sin_usar.count }})</h3>
+        <p style="color: #7f8c8d; margin-bottom: 15px;">
+            <i class="fas fa-info-circle"></i> Estos productos están en tu inventario pero no se usan en ninguna receta.
+        </p>
+        <div class="chart-container">
+            {% for producto in productos_sin_usar %}
+            <div class="producto-item">
+                <div style="display: flex; justify-content: space-between; align-items: start; width: 100%;">
+                    <div style="flex: 1;">
+                        <div class="producto-nombre">
+                            {{ producto.nombre }}
+                            <span class="badge badge-danger">Sin uso</span>
+                        </div>
+                        <div class="producto-stats">
+                            {{ producto.unidad_de_medida }} | 
+                            Costo: {{ moneda }}{{ producto.costo|floatformat:2|intcomma }}
+                        </div>
+                    </div>
+                    <a href="{% url 'admin:administracion_producto_change' producto.pk %}" class="btn-action" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> Ver
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <h2 class="section-title"><i class="fas fa-chart-pie"></i> Distribuciones</h2>
+    
+    <div class="grid-2">
+        <!-- RECETAS POR CATEGORÍA -->
+        <div class="metric-card">
+            <h3><i class="fas fa-layer-group"></i> Recetas por Categoría</h3>
+            {% if recetas_por_categoria %}
+                {% for categoria, cantidad in recetas_por_categoria.items %}
+                <div style="margin-bottom: 15px;">
+                    <strong>{{ categoria }}</strong>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {% widthratio cantidad total_recetas 100 %}%">
+                            {{ cantidad }} receta{{ cantidad|pluralize }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+        
+        <!-- PRODUCTOS POR UNIDAD -->
+        <div class="metric-card">
+            <h3><i class="fas fa-balance-scale"></i> Productos por Unidad de Medida</h3>
+            {% if productos_por_unidad %}
+                {% for unidad, cantidad in productos_por_unidad.items %}
+                <div style="margin-bottom: 15px;">
+                    <strong>{{ unidad }}</strong>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {% widthratio cantidad total_productos 100 %}%">
+                            {{ cantidad }} producto{{ cantidad|pluralize }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data">No hay datos disponibles</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- FOOTER -->
+    <div style="text-align: center; margin-top: 40px; padding: 20px; color: #95a5a6;">
+        <i class="fas fa-chart-line"></i> Dashboard generado el {% now "d/m/Y H:i" %}
+    </div>
+</div>
+<script>
+    (function() {
+        const modal = document.getElementById('qrAccesoModal');
+        const abrir = document.getElementById('abrirQrAcceso');
+        const cerrar = document.getElementById('cerrarQrAcceso');
+        const copiar = document.getElementById('copiarAccesoMovil');
+        const campo = document.getElementById('accesoMovilUrl');
+        const estado = document.getElementById('estadoCopiaQr');
+
+        function abrirModal() {
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            estado.textContent = '';
+        }
+
+        function cerrarModal() {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        async function copiarLink() {
+            try {
+                await navigator.clipboard.writeText(campo.value);
+                estado.textContent = 'Link copiado.';
+            } catch (error) {
+                campo.focus();
+                campo.select();
+                estado.textContent = 'No se pudo copiar automáticamente. Seleccioná y copiá el link manualmente.';
+            }
+        }
+
+        abrir.addEventListener('click', abrirModal);
+        cerrar.addEventListener('click', cerrarModal);
+        copiar.addEventListener('click', copiarLink);
+
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                cerrarModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modal.classList.contains('is-open')) {
+                cerrarModal();
+            }
+        });
+    })();
+</script>
+{% endblock %}

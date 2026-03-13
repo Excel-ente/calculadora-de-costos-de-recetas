@@ -1,0 +1,691 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Importar / Exportar Recetas{% endblock %}
+
+{% block extrastyle %}
+<style>
+    #content, .content, #content-main, .main, [id="content"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .ie-container {
+        padding: 20px;
+        background: #f8f9fa;
+        min-height: 80vh;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    .page-header .header-text h1 { margin: 4px 0 0 0; font-size: 1.9em; color: #2c3e50; }
+    .page-header .header-text p  { margin: 6px 0 0 0; color: #6c757d; max-width: 680px; font-size: 0.95em; }
+    .eyebrow { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.12em; font-weight: bold; color: #e74c3c; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 24px;
+    }
+    .stat-box { color: white; padding: 20px; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.12); }
+    .stat-box.green  { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .stat-box.blue   { background: linear-gradient(135deg, #4facfe 0%, #00c6ff 100%); }
+    .stat-box.purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-box .stat-value { font-size: 2.2em; font-weight: bold; line-height: 1.1; }
+    .stat-box .stat-label { font-size: 0.82em; opacity: 0.85; margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+    }
+    .action-card {
+        background: white;
+        border-radius: 10px;
+        padding: 24px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .action-card h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1em;
+        color: #2c3e50;
+        border-bottom: 2px solid #e74c3c;
+        padding-bottom: 10px;
+    }
+    .action-card h3 .icon {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: 8px; font-size: 1.1em; flex-shrink: 0;
+    }
+    .action-card p { margin: 0; color: #555; font-size: 0.88em; line-height: 1.55; }
+
+    .btn-export {
+        display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
+        border: none; border-radius: 6px; cursor: pointer; font-size: 0.92em; font-weight: 600;
+        transition: opacity .2s, transform .15s; text-decoration: none;
+    }
+    .btn-export:hover { opacity: .85; transform: translateY(-1px); }
+    .btn-template   { background: #27ae60; color: #fff; }
+    .btn-export-all { background: #2980b9; color: #fff; }
+    .btn-import     { background: #8e44ad; color: #fff; }
+
+    .upload-zone {
+        border: 2px dashed #bbb; border-radius: 8px; padding: 20px; text-align: center;
+        cursor: pointer; transition: border-color .2s, background .2s; background: #fafafa; position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: #8e44ad; background: #f3eaff; }
+    .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-zone .upload-icon { font-size: 2em; margin-bottom: 6px; display: block; }
+    .upload-zone .file-name   { font-size: 0.82em; color: #555; margin-top: 4px; min-height: 1.2em; }
+
+    .messages-list { list-style: none; padding: 0; margin: 0 0 20px 0; }
+    .messages-list li { padding: 10px 14px; border-radius: 6px; margin-bottom: 6px; font-size: 0.88em; }
+    .messages-list li.success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+    .messages-list li.warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+    .messages-list li.error   { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+    .messages-list li.info    { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+
+    .preview-card {
+        background: white;
+        border-radius: 10px;
+        padding: 24px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        margin-top: 22px;
+    }
+
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin: 18px 0;
+    }
+
+    .preview-stat {
+        background: #f7f9fc;
+        border: 1px solid #e4e8ee;
+        border-radius: 8px;
+        padding: 14px 16px;
+    }
+
+    .preview-stat strong {
+        display: block;
+        font-size: 1.5em;
+        color: #2c3e50;
+    }
+
+    .preview-stat span {
+        display: block;
+        color: #6c757d;
+        font-size: 0.82em;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+
+    .banner {
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin: 12px 0;
+        font-size: 0.9em;
+        line-height: 1.5;
+    }
+
+    .banner.warning { background: #fff3cd; border-left: 4px solid #f39c12; color: #856404; }
+    .banner.error { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+    .banner.success { background: #d4edda; border-left: 4px solid #28a745; color: #155724; }
+
+    .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.86em;
+        margin-top: 10px;
+    }
+
+    .preview-table th,
+    .preview-table td {
+        border-bottom: 1px solid #eceff3;
+        padding: 9px 10px;
+        text-align: left;
+    }
+
+    .preview-table th {
+        background: #2c3e50;
+        color: white;
+    }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 0.78em;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .pill.create { background: #e8f8ef; color: #1e8449; }
+    .pill.update { background: #eaf3ff; color: #1f618d; }
+
+    .preview-columns {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+        margin-top: 18px;
+    }
+
+    .preview-list {
+        margin: 0;
+        padding-left: 18px;
+        color: #444;
+        font-size: 0.88em;
+    }
+
+    .preview-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+    }
+
+    .btn-confirm {
+        background: #c0392b;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 11px 18px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .btn-confirm:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+    .steps-list { counter-reset: steps; list-style: none; padding: 0; margin: 0; }
+    .steps-list li {
+        counter-increment: steps; display: flex; align-items: flex-start;
+        gap: 10px; margin-bottom: 10px; font-size: 0.87em; color: #444;
+    }
+    .steps-list li::before {
+        content: counter(steps); display: inline-flex; align-items: center; justify-content: center;
+        min-width: 22px; height: 22px; border-radius: 50%; background: #8e44ad;
+        color: white; font-weight: bold; font-size: 0.78em; flex-shrink: 0; margin-top: 1px;
+    }
+
+    .alert-info-box {
+        background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px;
+        padding: 12px 16px; font-size: 0.85em; color: #856404; margin-top: 4px;
+    }
+
+    @media (max-width: 700px) {
+        .page-header { flex-direction: column; }
+        .stats-grid  { grid-template-columns: 1fr 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ie-container">
+
+    {% if messages %}
+    <ul class="messages-list">
+        {% for msg in messages %}
+        <li class="{{ msg.tags }}">{{ msg }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- Cabecera -->
+    <div class="page-header">
+        <div class="header-text">
+            <div class="eyebrow">Gestión de recetas</div>
+            <h1>📖 Importar / Exportar Recetas</h1>
+                <p>Cargá o descargá tus recetas en formato Excel.<br>
+                    La importación usa un único archivo <strong>.xlsx</strong> con seis hojas: <strong>Recetas</strong>, <strong>Recetas-Productos</strong>, <strong>Bienes</strong>, <strong>Recetas-Bienes</strong>, <strong>Configuracion</strong> y <strong>Productos</strong>. Primero se analiza el archivo y después se confirma.</p>
+        </div>
+    </div>
+
+    <!-- Métricas rápidas -->
+    <div class="stats-grid">
+        <div class="stat-box green">
+            <div class="stat-value">{{ total_recetas }}</div>
+            <div class="stat-label">Recetas en base</div>
+        </div>
+        <div class="stat-box blue">
+            <div class="stat-value">XLSX</div>
+            <div class="stat-label">Formato soportado</div>
+        </div>
+        <div class="stat-box purple">
+            <div class="stat-value">6</div>
+            <div class="stat-label">Hojas por archivo</div>
+        </div>
+    </div>
+
+    <!-- Tarjetas acción -->
+    <div class="cards-grid">
+
+        <!-- 1. Descargar plantilla -->
+        <div class="action-card">
+            <h3>
+                <span class="icon" style="background:#e8f8ef;">📋</span>
+                Descargar plantilla vacía
+            </h3>
+            <p>Descargá la plantilla oficial con recetas, ingredientes, bienes, relaciones receta-bien, configuración de kWh y la hoja de referencia de productos.</p>
+            <ol class="steps-list">
+                <li>Hacé clic en <strong>Descargar plantilla</strong>.</li>
+                <li>Completá <strong>Recetas</strong>, <strong>Recetas-Productos</strong>, <strong>Bienes</strong>, <strong>Recetas-Bienes</strong> y <strong>Configuracion</strong>. La fila gris es un ejemplo.</li>
+                <li>Guardá el archivo y volvé aquí para importarlo.</li>
+            </ol>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="exportar_plantilla">
+                <button type="submit" class="btn-export btn-template">
+                    ⬇️ Descargar plantilla
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. Exportar recetas -->
+        <div class="action-card">
+            <h3>
+                <span class="icon" style="background:#e8f0fb;">📤</span>
+                Exportar todas las recetas
+            </h3>
+            <p>Descargá un Excel completo con tus recetas, ingredientes, bienes, relaciones receta-bien, precio kWh actual y la hoja de referencia de productos disponibles.</p>
+            <p><strong>Tip:</strong> si vas a editar en lote, conservá los IDs cuando quieras actualizar registros existentes.</p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="exportar_recetas">
+                <button type="submit" class="btn-export btn-export-all">
+                    ⬇️ Exportar recetas ({{ total_recetas }})
+                </button>
+            </form>
+        </div>
+
+        <!-- 3. Importar -->
+        <div class="action-card">
+            <h3>
+                <span class="icon" style="background:#f3eaff;">📥</span>
+                Importar desde Excel
+            </h3>
+            <p>Seleccioná un archivo <strong>.xlsx</strong>. El sistema va a validar las hojas, mostrar un preview con errores y recién después habilitar la confirmación.</p>
+            <div class="alert-info-box">
+                ⚠️ <strong>Importante:</strong> la hoja <strong>Productos</strong> es solo de referencia y no se importa. Las categorías se normalizan automáticamente para reducir duplicados por espacios o mayúsculas.
+            </div>
+            <form method="post" enctype="multipart/form-data" id="formImportar">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="previsualizar">
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" name="archivo_excel" id="archivoExcel" accept=".xlsx" required>
+                    <span class="upload-icon">📂</span>
+                    <div><strong>Hacer clic o arrastrar</strong> el archivo aquí</div>
+                    <div class="file-name" id="fileName">Ningún archivo seleccionado</div>
+                </div>
+                <button type="submit" class="btn-export btn-import" style="margin-top:12px;width:100%;justify-content:center;">
+                    🔎 Analizar archivo
+                </button>
+            </form>
+        </div>
+
+    </div><!-- /cards-grid -->
+
+    {% if preview %}
+    <div class="preview-card">
+        <h3 style="margin:0 0 8px;color:#2c3e50;">Previsualización de importación</h3>
+        <p style="margin:0;color:#6c757d;font-size:.9em;">Archivo analizado: <strong>{{ preview.original_filename }}</strong></p>
+
+        <div class="preview-grid">
+            <div class="preview-stat">
+                <strong>{{ preview.summary.configuraciones_actualizar }}</strong>
+                <span>Config. a actualizar</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.recetas_crear }}</strong>
+                <span>Recetas a crear</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.recetas_actualizar }}</strong>
+                <span>Recetas a actualizar</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.bienes_crear }}</strong>
+                <span>Bienes a crear</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.bienes_actualizar }}</strong>
+                <span>Bienes a actualizar</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.relaciones_crear }}</strong>
+                <span>Ingredientes a crear</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.relaciones_actualizar }}</strong>
+                <span>Ingredientes a actualizar</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.relaciones_bienes_crear }}</strong>
+                <span>Bienes-receta a crear</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.relaciones_bienes_actualizar }}</strong>
+                <span>Bienes-receta a actualizar</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.recetas_filas }}</strong>
+                <span>Filas en Recetas</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.ingredientes_filas }}</strong>
+                <span>Filas en Recetas-Productos</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.bienes_filas }}</strong>
+                <span>Filas en Bienes</span>
+            </div>
+            <div class="preview-stat">
+                <strong>{{ preview.summary.bienes_receta_filas }}</strong>
+                <span>Filas en Recetas-Bienes</span>
+            </div>
+        </div>
+
+        {% if preview.high_volume %}
+        <div class="banner warning">
+            El volumen del archivo es alto. Para una operación corporativa conviene ejecutar la confirmación como tarea asíncrona para evitar timeouts de la petición web.
+        </div>
+        {% endif %}
+
+        {% if preview.warnings %}
+        <div class="banner warning">
+            <strong>Advertencias:</strong>
+            <ul class="preview-list">
+                {% for warning in preview.warnings %}
+                <li>{{ warning }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if preview.errors %}
+        <div class="banner error">
+            <strong>Errores detectados:</strong> {{ preview.total_errors }}
+            <ul class="preview-list">
+                {% for error in preview.errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            {% if preview.total_errors > preview.errors|length %}
+            <div style="margin-top:8px;">Se muestran los primeros {{ preview.errors|length }} errores.</div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="banner success">
+            El archivo no tiene errores bloqueantes. Ya se puede confirmar la importación.
+        </div>
+        {% endif %}
+
+        <div class="preview-columns">
+            <div>
+                <h4 style="margin:0 0 8px;color:#2c3e50;">Configuración</h4>
+                {% if preview.configuracion_actions %}
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>Fila</th>
+                            <th>Registro</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in preview.configuracion_actions %}
+                        <tr>
+                            <td>{{ item.row_num }}</td>
+                            <td>{{ item.label }}</td>
+                            <td>
+                                <span class="pill {% if item.action == 'Crear' %}create{% else %}update{% endif %}">{{ item.action }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color:#6c757d;font-size:.88em;">No hay cambios de configuración para mostrar.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h4 style="margin:0 0 8px;color:#2c3e50;">Recetas</h4>
+                {% if preview.receta_actions %}
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>Fila</th>
+                            <th>Registro</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in preview.receta_actions %}
+                        <tr>
+                            <td>{{ item.row_num }}</td>
+                            <td>{{ item.label }}</td>
+                            <td>
+                                <span class="pill {% if item.action == 'Crear' %}create{% else %}update{% endif %}">{{ item.action }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color:#6c757d;font-size:.88em;">No hay cambios de recetas para mostrar.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h4 style="margin:0 0 8px;color:#2c3e50;">Ingredientes</h4>
+                {% if preview.relacion_actions %}
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>Fila</th>
+                            <th>Relación</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in preview.relacion_actions %}
+                        <tr>
+                            <td>{{ item.row_num }}</td>
+                            <td>{{ item.label }}</td>
+                            <td>
+                                <span class="pill {% if item.action == 'Crear' %}create{% else %}update{% endif %}">{{ item.action }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color:#6c757d;font-size:.88em;">No hay cambios de ingredientes para mostrar.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h4 style="margin:0 0 8px;color:#2c3e50;">Bienes</h4>
+                {% if preview.bien_actions %}
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>Fila</th>
+                            <th>Registro</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in preview.bien_actions %}
+                        <tr>
+                            <td>{{ item.row_num }}</td>
+                            <td>{{ item.label }}</td>
+                            <td>
+                                <span class="pill {% if item.action == 'Crear' %}create{% else %}update{% endif %}">{{ item.action }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color:#6c757d;font-size:.88em;">No hay cambios de bienes para mostrar.</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <h4 style="margin:0 0 8px;color:#2c3e50;">Bienes en receta</h4>
+                {% if preview.bien_relacion_actions %}
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>Fila</th>
+                            <th>Relación</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in preview.bien_relacion_actions %}
+                        <tr>
+                            <td>{{ item.row_num }}</td>
+                            <td>{{ item.label }}</td>
+                            <td>
+                                <span class="pill {% if item.action == 'Crear' %}create{% else %}update{% endif %}">{{ item.action }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color:#6c757d;font-size:.88em;">No hay cambios de bienes-receta para mostrar.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="preview-footer">
+            <div style="color:#6c757d;font-size:.86em;">La confirmación vuelve a validar el archivo y aplica todo dentro de una transacción.</div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="confirmar_importacion">
+                <input type="hidden" name="preview_token" value="{{ preview.token }}">
+                <button type="submit" class="btn-confirm" {% if not preview.can_confirm %}disabled{% endif %}>
+                    Confirmar importación
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Estructura del archivo -->
+    <div style="background:white;border-radius:10px;padding:20px;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-top:22px;">
+        <h3 style="margin:0 0 14px;color:#2c3e50;font-size:1em;border-bottom:2px solid #e74c3c;padding-bottom:8px;">
+            📐 Estructura del archivo Excel
+        </h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+            <div>
+                <h4 style="margin:0 0 10px;color:#2c3e50;">Hoja Recetas</h4>
+                <ul class="preview-list">
+                    <li><strong>ID</strong>: opcional para update exacto.</li>
+                    <li><strong>Nombre</strong> y <strong>Descripción</strong>: obligatorios.</li>
+                    <li><strong>Porciones</strong>: número mayor a 0.</li>
+                    <li><strong>Rentabilidad</strong>: entre 0 y 99.99.</li>
+                    <li><strong>IVA</strong>: número mayor o igual a 0.</li>
+                    <li><strong>Categoría</strong>: se crea si no existe, normalizada con trim y capitalización.</li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="margin:0 0 10px;color:#2c3e50;">Hoja Recetas-Productos</h4>
+                <ul class="preview-list">
+                    <li>Permite resolver la receta por <strong>ID</strong> o por <strong>nombre</strong>.</li>
+                    <li>Permite resolver el producto por <strong>ID</strong> o por <strong>nombre</strong>.</li>
+                    <li><strong>Cantidad</strong>: obligatoria y mayor a 0.</li>
+                    <li><strong>Medida de uso</strong>: obligatoria y compatible con la unidad del producto.</li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="margin:0 0 10px;color:#2c3e50;">Hoja Bienes</h4>
+                <ul class="preview-list">
+                    <li>Permite crear o actualizar bienes por <strong>ID</strong> o por <strong>nombre</strong>.</li>
+                    <li><strong>Costo de compra</strong>: mayor o igual a 0.</li>
+                    <li><strong>Vida útil</strong>: cantidad mayor a 0 y unidad válida.</li>
+                    <li><strong>Potencia</strong> y <strong>factor de uso</strong>: se usan para calcular electricidad.</li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="margin:0 0 10px;color:#2c3e50;">Hoja Recetas-Bienes</h4>
+                <ul class="preview-list">
+                    <li>Permite vincular recetas con bienes por <strong>ID</strong> o por <strong>nombre</strong>.</li>
+                    <li><strong>Tiempo de uso</strong>: obligatorio y mayor a 0.</li>
+                    <li><strong>Incluir depreciación</strong> e <strong>incluir electricidad</strong>: aceptan <strong>Si</strong> o <strong>No</strong>.</li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="margin:0 0 10px;color:#2c3e50;">Hoja Configuracion</h4>
+                <ul class="preview-list">
+                    <li>Permite actualizar el <strong>precio kWh</strong> usado en el costeo eléctrico.</li>
+                    <li>Solo se admite una fila con datos.</li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="margin:0 0 10px;color:#2c3e50;">Hoja Productos</h4>
+                <ul class="preview-list">
+                    <li>Es una hoja de referencia para lookups y desplegables.</li>
+                    <li>No se importa.</li>
+                    <li>Muestra los productos visibles para el usuario actual.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Mostrar nombre del archivo seleccionado
+    const archivoInput = document.getElementById('archivoExcel');
+    const fileNameEl   = document.getElementById('fileName');
+    const uploadZone   = document.getElementById('uploadZone');
+
+    if (archivoInput) {
+        archivoInput.addEventListener('change', () => {
+            fileNameEl.textContent = archivoInput.files[0]
+                ? archivoInput.files[0].name
+                : 'Ningún archivo seleccionado';
+        });
+    }
+
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+        uploadZone.addEventListener('dragleave', ()  => uploadZone.classList.remove('drag-over'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) {
+                archivoInput.files = e.dataTransfer.files;
+                fileNameEl.textContent = e.dataTransfer.files[0].name;
+            }
+        });
+    }
+</script>
+{% endblock %}
