@@ -111,7 +111,8 @@ Si una receta no necesita asociar bienes, puede seguir calculándose de forma no
 |---|---|---|
 | **Python** | 3.12 o superior | [python.org/downloads](https://www.python.org/downloads/) |
 | **Sistema operativo** | Windows 10 / 11 | — |
-| **Git** *(solo si vas a clonar)* | Cualquier versión | [git-scm.com](https://git-scm.com/downloads) |
+| **Git** *(solo si vas a clonar o actualizar manualmente)* | Cualquier versión | [git-scm.com](https://git-scm.com/downloads) |
+| **winget / App Installer** *(recomendado)* | Incluido en Windows 10/11 moderno | Microsoft Store |
 
 ### ¿Cómo verificar si ya tenés Python instalado?
 
@@ -121,48 +122,53 @@ Abrí el **Símbolo del sistema** (`Win + R` → escribí `cmd` → `Enter`) y e
 python --version
 ```
 
-Si ves `Python 3.12.x` o superior, ¡estás listo!  
-Si no, descargá Python desde [python.org](https://www.python.org/downloads/) y durante la instalación **marcá la casilla "Add Python to PATH"**.
+Si ves `Python 3.12.x` o superior, ya podés seguir.  
+Si no lo tenés, el instalador `iniciar_windows.bat` ahora puede intentar instalarlo automáticamente con `winget`.
 
 ---
 
 ## 🚀 Instalación rápida — Windows
 
-> Recomendado para la mayoría de los usuarios. El script `iniciar_windows.bat` hace todo automáticamente.
+> Recomendado para la mayoría de los usuarios. El script `iniciar_windows.bat` ahora sirve tanto como lanzador del proyecto como bootstrap instalable por copia y pegado.
 
-### Paso 1 — Descargá el proyecto
+### Paso 1 — Elegí una carpeta fija
 
-En la página del repositorio de GitHub:
+Creá una carpeta donde quieras dejar instalada la app, por ejemplo:
 
-1. Hacé clic en el botón verde **`<> Code`**
-2. Seleccioná **`Download ZIP`**
-3. Descomprimí el ZIP en una carpeta de tu elección
+`C:\Proyectos\calculadora-costos\`
 
-   > Ejemplo: `C:\Proyectos\calculadora-costos\`
+> Todo queda guardado ahi: base de datos, `.env`, `media/` y `venv/`.
 
-   > ⚠️ Evitá rutas con espacios o caracteres especiales, como `Mis Documentos`.
+### Paso 2 — Pegá el contenido de `iniciar_windows.bat`
 
-### Paso 2 — Ejecutá el script de instalación
+1. Abrí el archivo `iniciar_windows.bat` desde GitHub.
+2. Copiá todo su contenido.
+3. Creá un archivo nuevo con ese mismo nombre dentro de tu carpeta fija.
+4. Ejecutalo con clic derecho → **Ejecutar como administrador**.
 
-1. Abrí la carpeta donde descomprimiste el proyecto
-2. Hacé **doble clic** en el archivo **`iniciar_windows.bat`**
+Este camino evita el bloqueo frecuente que Windows aplica a los `.bat` descargados dentro de un ZIP.
+
+### Paso 3 — Dejá que el script haga el trabajo
+
+Si en esa ruta todavia no existe la carpeta del proyecto, el script:
+
+- ✅ instala Python 3.12+ si falta
+- ✅ instala Git si falta
+- ✅ clona el repositorio oficial en esa misma ruta
+- ✅ crea el entorno virtual
+- ✅ instala dependencias
+- ✅ crea `.env`
+- ✅ aplica migraciones
+- ✅ te guia para crear el usuario administrador
+- ✅ puede crear un acceso directo
+
+Si la carpeta del proyecto ya existe y tiene Git, el script intenta hacer `git pull --ff-only` antes de iniciar.
 
 > 📌 **Importante:** todo queda guardado en esa misma carpeta (por ejemplo `db.sqlite3`, `.env`, `media/` y el entorno `venv`).
 > Antes de ejecutar el `.bat`, colocá el proyecto en un lugar seguro y permanente (por ejemplo `Documentos\calculadora-costos\`).
 > Evitá mover o borrar esa carpeta después, porque ahí queda toda tu información.
 
-El script realiza todo automáticamente en el primer uso:
-
-- ✅ Verifica que Python esté instalado
-- ✅ Crea el entorno virtual de Python (`venv`)
-- ✅ Instala todas las dependencias del proyecto
-- ✅ Crea el archivo de configuración `.env`
-- ✅ Aplica las migraciones de la base de datos
-- ✅ Te guía para crear tu usuario administrador
-- ✅ Te ofrece crear un acceso directo en el escritorio
-- ✅ Abre el navegador automáticamente en `http://127.0.0.1:8000/admin/`
-
-### Paso 3 — Ingresá a la aplicación
+### Paso 4 — Ingresá a la aplicación
 
 En el navegador, iniciá sesión con el **nombre de usuario y contraseña** que creaste en el paso anterior.
 
@@ -201,6 +207,8 @@ Necesitás **Python 3.12 o superior**. Si no lo tenés:
 1. Descargá desde [python.org/downloads](https://www.python.org/downloads/)
 2. **⚠️ Importante:** marcá la casilla **"Add Python to PATH"** al instalar
 3. Cerrá y volvé a abrir el `cmd`
+
+> Si preferís evitar esta parte manual, usá el `iniciar_windows.bat` copiado a mano y dejá que instale Python con `winget`.
 
 ---
 
@@ -315,8 +323,8 @@ Una vez instalado, para abrir la aplicación cada día:
 **Opción A — Acceso directo** *(si lo creaste durante la instalación)*  
 Hacé doble clic en **`Calculadora de Costos`** en el escritorio.
 
-**Opción B — Script desde la carpeta**  
-Hacé doble clic en **`iniciar_windows.bat`** en la carpeta del proyecto.
+**Opción B — Script bootstrap o script desde la carpeta**  
+Hacé doble clic en **`iniciar_windows.bat`**. Si está fuera del repo, actualiza o reinstala en esa ruta. Si está dentro del repo, simplemente actualiza e inicia.
 
 **Opción C — Desde el Símbolo del Sistema**
 

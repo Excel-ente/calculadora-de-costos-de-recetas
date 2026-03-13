@@ -84,18 +84,15 @@ Ese archivo prepara el entorno y abre la aplicación en el navegador.
 
 ## 4. Qué necesita tener en Windows
 
-Para usar la app en Windows, lo principal es tener instalado:
+Para usar la app en Windows, lo ideal es tener:
 
-- **Python 3.12 o superior**
+- **Windows 10 u 11**
+- **winget / App Installer** disponible
+- conexión a internet en el primer arranque
 
-Si el proyecto ya está funcionando en su computadora, entonces este requisito seguramente ya está resuelto.
+Python y Git pueden instalarse solos desde el propio `iniciar_windows.bat` si todavía no están en la PC.
 
-Si todavía no está instalado, el camino habitual es:
-
-1. ir a la página oficial de Python,
-2. descargar Python,
-3. instalarlo,
-4. marcar la opción **Add Python to PATH** durante la instalación.
+Si `winget` no está disponible, entonces sí conviene instalar Python manualmente desde su sitio oficial y Git desde git-scm.com.
 
 ---
 
@@ -109,16 +106,20 @@ La forma recomendada es usar el archivo:
 
 1. Abra la carpeta del proyecto.
 2. Busque el archivo `iniciar_windows.bat`.
-3. Haga doble clic sobre ese archivo.
-4. Espere unos segundos.
-5. Se abrirá una ventana negra o azul de comandos.
-6. Luego se abrirá el navegador con la dirección de la app.
+3. Si usted mismo lo creó pegando el texto, haga clic derecho y elija **Ejecutar como administrador**.
+4. Si ya está dentro de la carpeta del proyecto, también puede hacer doble clic normal.
+5. Espere unos segundos.
+6. Se abrirá una ventana negra o azul de comandos.
+7. Luego se abrirá el navegador con la dirección de la app.
 
 ### Qué hace ese archivo por usted
 
 Ese archivo se encarga de varias tareas automáticamente:
 
-- verificar Python,
+- verificar si falta Python y tratar de instalarlo,
+- verificar si falta Git y tratar de instalarlo,
+- descargar el proyecto si la carpeta todavia no existe,
+- actualizarlo con Git si ya existe,
 - preparar el entorno interno,
 - instalar dependencias si hace falta,
 - revisar la base de datos,
@@ -138,6 +139,9 @@ Eso es normal.
 
 Porque el sistema puede necesitar:
 
+- instalar Python,
+- instalar Git,
+- descargar o actualizar el proyecto,
 - preparar archivos internos,
 - instalar paquetes,
 - crear la base de datos,
@@ -533,7 +537,9 @@ Esto no reemplaza un sistema profesional de backup, pero para uso cotidiano pued
 
 ### Error 1: doble clic y no pasa nada
 
-Puede ser que Python no esté bien instalado o no esté agregado al PATH.
+Puede ser que Windows haya bloqueado el archivo descargado, o que falte `winget` para hacer la instalacion automatica.
+
+La forma mas robusta es crear usted mismo el archivo `iniciar_windows.bat`, pegando el texto dentro de una carpeta nueva, y ejecutarlo como administrador.
 
 ### Error 2: se abre la app pero luego deja de responder
 
