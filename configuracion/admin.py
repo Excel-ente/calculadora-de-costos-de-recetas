@@ -15,6 +15,24 @@ from .models import Configuracion
 class ConfiguracionAdmin(admin.ModelAdmin):
     exclude = ('usuario',)
     list_display_links = ('id','nombre_emprendimiento','telefono','redes_sociales',)
+    fieldsets = (
+        ('Datos del emprendimiento', {
+            'fields': ('nombre_emprendimiento', 'logo', 'telefono', 'redes_sociales', 'moneda','redondeo'),
+        }),
+        ('Precio Kwh', {
+            'fields': ('precio_kwh',),
+        }),
+        ('Segunda moneda', {
+            'fields': ('habilitar_segunda_moneda', 'segunda_moneda', 'tipo_de_cambio', 'redondeo_segunda_moneda'),
+            'description': (
+                'Activá esta sección para mostrar precios en dos monedas simultáneamente. '
+                'Al desactivarla, el sistema funciona exactamente igual que antes sin ningún cambio.'
+            ),
+        }),
+    )
+
+    class Media:
+        js = ('js/segunda_moneda_admin.js',)
 
     def changelist_view(self, request, extra_context=None):
         configuracion = Configuracion.objects.first()

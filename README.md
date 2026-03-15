@@ -45,7 +45,8 @@ La **Calculadora de Costos de Recetas** es una aplicación web que corre localme
 | 🍰 **Recetas** | Recetas con pasos, ingredientes, bienes asociados y cálculo automático de costos |
 | 🏭 **Bienes** | Equipos como hornos, batidoras o heladeras con costo de uso, depreciación y electricidad |
 | 💰 **Costo de producción** | Cálculo con IVA, gastos adicionales, depreciación y consumo eléctrico cuando corresponde |
-| 📂 **Categorías** | Organización de recetas y productos por categoría |
+| � **Segunda moneda** | Mostrá todos los precios y costos en dos monedas simultáneamente (ej. $ y USD) con tipo de cambio y redondeo configurables |
+| �📂 **Categorías** | Organización de recetas y productos por categoría |
 | 🏭 **Fabricaciones** | Registro de producción con historial y fechas |
 | 📊 **Exportaciones** | Descarga de reportes en Excel y PDF |
 | 📅 **Agenda** | Agenda integrada de tareas y recordatorios |
@@ -357,6 +358,7 @@ La documentación complementaria del proyecto está organizada en la carpeta [`d
 - [Dashboard](docs/dashboard.md)
 - [Resumen del dashboard](docs/dashboard-resumen.md)
 - [Especificación funcional de bienes](docs/funcionalidad-bienes.md)
+- [Segunda moneda (doble divisa)](docs/segunda-moneda.md)
 
 ---
 
@@ -389,7 +391,6 @@ La documentación complementaria del proyecto está organizada en la carpeta [`d
 - [ ] Alertas de stock mínimo de ingredientes
 - [ ] Comparador de costos entre recetas
 - [ ] Modo oscuro
-- [ ] Soporte para múltiples monedas
 
 > 🎬 Seguí el canal de YouTube para ver cómo se implementan estas mejoras en vivo con agentes de IA.
 
@@ -426,3 +427,34 @@ Si te ayudó, ¡dejale una ⭐ al repositorio!
 Contacto
 
 Correo electrónico por turkienich@gmail.com
+
+---
+
+## 📦 Historial de versiones
+
+### v2.1.0 — Segunda moneda (doble divisa) con redondeo configurable
+
+**Fecha:** Marzo 2026
+
+```
+feat: implementar segunda moneda con redondeo configurable
+
+- Agrega campos habilitar_segunda_moneda, segunda_moneda, tipo_de_cambio
+  y redondeo_segunda_moneda al modelo Configuracion
+- Migraciones 0002, 0003 y 0004 en configuracion/
+- Métodos costo_unitario_segunda_moneda() en Producto y
+  costo_porcion_segunda_moneda(), precio_venta_porcion_segunda_moneda(),
+  precio_venta_total_segunda_moneda() en Receta con round() dinámico
+- Admin: columnas de segunda moneda en lista de Productos y Recetas;
+  celdas de Costo, Costo unitario, Costo total y Precio venta muestran
+  ambas monedas en la misma celda (formato <small> gris)
+- Reporte PDF: fmt2() aplica tipo de cambio y redondeo configurados
+- Dashboard: valores costo_total_2, costo_porcion_2 y precio_venta_2
+  usan redondeo_segunda_moneda independiente del redondeo principal
+- JS: deshabilita campos de segunda moneda cuando el toggle está apagado
+- Tests: clase SegundaMonedaTests con 13 casos integradores (13/13 OK)
+- Docs: docs/segunda-moneda.md documentación completa de la feature
+```
+
+**Archivos modificados:**  
+`configuracion/models.py` · `configuracion/admin.py` · `configuracion/migrations/0002–0004` · `administracion/models.py` · `administracion/admin.py` · `administracion/Reporte.py` · `administracion/dashboard_views.py` · `administracion/tests.py` · `static/js/segunda_moneda_admin.js` · `docs/segunda-moneda.md`

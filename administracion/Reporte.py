@@ -13,6 +13,12 @@ PRIMARY_COLOR = HexColor('#D81B60')  # Rosa oscuro/Fucsia para títulos
 TEXT_COLOR = HexColor('#333333')  # Gris oscuro para texto
 LINE_COLOR = HexColor('#D81B60')
 
+
+def _fn(v, d=2):
+    """Formato numérico argentino: punto para miles, coma para decimal."""
+    s = f'{float(v):,.{d}f}'
+    return s.replace(',', 'X').replace('.', ',').replace('X', '.')
+
 def setup_canvas(response, title):
     p = canvas.Canvas(response, pagesize=A4)
     p.setTitle(title)
@@ -70,6 +76,20 @@ def build_pdf_costos(response, pedido, config):
     width, height = A4
     p = setup_canvas(response, f"Receta {pedido.nombre}")
     desglose = pedido.desglose_costos()
+
+    # Segunda moneda
+    segunda_moneda_activa = bool(
+        config and config.habilitar_segunda_moneda and float(config.tipo_de_cambio or 0) > 0
+    )
+    segunda_moneda = config.segunda_moneda if segunda_moneda_activa else ''
+    tc = float(config.tipo_de_cambio) if segunda_moneda_activa else 1
+    redondeo_2 = int(config.redondeo_segunda_moneda or 0) if segunda_moneda_activa else 2
+
+    def fmt2(valor):
+        """Formatea un valor en segunda moneda como texto entre paréntesis."""
+        if not segunda_moneda_activa:
+            return ''
+        return f'  ({segunda_moneda} {_fn(float(valor) * tc, max(0, redondeo_2))})'
     
     draw_background(p, width, height)
     y = draw_header(p, width, height, config)
@@ -123,23 +143,23 @@ def build_pdf_costos(response, pedido, config):
     precio_venta = pedido.precio_venta_porcion()
     precio_total = pedido.precio_venta_total()
 
-    p.drawString(40, y, f"Costo Total Receta: {moneda} {costo_total:,.2f}")
+    p.drawString(40, y, f"Costo Total Receta: {moneda} {_fn(costo_total)}{fmt2(costo_total)}")
     y -= 15
-    p.drawString(40, y, f"Costo Insumos: {moneda} {desglose['insumos']:,.2f}")
+    p.drawString(40, y, f"Costo Insumos: {moneda} {_fn(desglose['insumos'])}{fmt2(desglose['insumos'])}")
     y -= 15
-    p.drawString(40, y, f"Gastos Adicionales: {moneda} {desglose['gastos_adicionales']:,.2f}")
+    p.drawString(40, y, f"Gastos Adicionales: {moneda} {_fn(desglose['gastos_adicionales'])}{fmt2(desglose['gastos_adicionales'])}")
     y -= 15
-    p.drawString(40, y, f"Bienes (Depreciacion + Electricidad): {moneda} {desglose['bienes_total']:,.2f}")
+    p.drawString(40, y, f"Bienes (Depreciacion + Electricidad): {moneda} {_fn(desglose['bienes_total'])}{fmt2(desglose['bienes_total'])}")
     y -= 15
-    p.drawString(40, y, f"Depreciacion de Bienes: {moneda} {desglose['bienes_depreciacion']:,.2f}")
+    p.drawString(40, y, f"Depreciacion de Bienes: {moneda} {_fn(desglose['bienes_depreciacion'])}{fmt2(desglose['bienes_depreciacion'])}")
     y -= 15
-    p.drawString(40, y, f"Electricidad de Bienes: {moneda} {desglose['bienes_electricidad']:,.2f}")
+    p.drawString(40, y, f"Electricidad de Bienes: {moneda} {_fn(desglose['bienes_electricidad'])}{fmt2(desglose['bienes_electricidad'])}")
     y -= 15
-    p.drawString(40, y, f"Costo por Porción: {moneda} {costo_porcion:,.2f}")
+    p.drawString(40, y, f"Costo por Porción: {moneda} {_fn(costo_porcion)}{fmt2(costo_porcion)}")
     y -= 15
-    p.drawString(40, y, f"Precio Venta Sugerido (Porción): {moneda} {precio_venta:,.2f}")
+    p.drawString(40, y, f"Precio Venta Sugerido (Porción): {moneda} {_fn(precio_venta)}{fmt2(precio_venta)}")
     y -= 15
-    p.drawString(40, y, f"Precio Venta Total: {moneda} {precio_total:,.2f}")
+    p.drawString(40, y, f"Precio Venta Total: {moneda} {_fn(precio_total)}{fmt2(precio_total)}")
     y -= 30
 
     # Insumos (Ingredientes)
@@ -154,7 +174,8 @@ def build_pdf_costos(response, pedido, config):
         for insumo in insumos:
             y = check_page_break(p, y, width, height, config)
             nombre_prod = insumo.producto.nombre.upper()
-            detalle = f"{insumo.cantidad} {insumo.medida_uso} - {moneda} {insumo.precio_total():,.2f}"
+            precio_insumo = insumo.precio_total()
+            detalle = f"{insumo.cantidad} {insumo.medida_uso} - {moneda} {_fn(precio_insumo)}{fmt2(precio_insumo)}"
             
             p.setFont("Helvetica-Bold", 9)
             p.drawString(50, y, f"• {nombre_prod}")
@@ -191,7 +212,7 @@ def build_pdf_costos(response, pedido, config):
         p.setFillColor(TEXT_COLOR)
         for gasto in gastos:
             y = check_page_break(p, y, width, height, config)
-            detalle_gasto = f"{moneda} {gasto.importe:,.2f}"
+            detalle_gasto = f"{moneda} {_fn(gasto.importe)}{fmt2(gasto.importe)}"
             
             p.setFont("Helvetica", 9)
             p.drawString(50, y, f"• {gasto.detalle}")
@@ -233,9 +254,9 @@ def build_pdf_costos(response, pedido, config):
             p.setFont("Helvetica", 9)
             detalle = (
                 f"Uso: {bien.tiempo_uso_label()} | "
-                f"Depreciacion: {moneda} {bien.costo_depreciacion():,.2f} | "
-                f"Electricidad: {moneda} {bien.costo_electricidad():,.2f} | "
-                f"Total: {moneda} {bien.costo_total():,.2f}"
+                f"Depreciacion: {moneda} {_fn(bien.costo_depreciacion())}{fmt2(bien.costo_depreciacion())} | "
+                f"Electricidad: {moneda} {_fn(bien.costo_electricidad())}{fmt2(bien.costo_electricidad())} | "
+                f"Total: {moneda} {_fn(bien.costo_total())}{fmt2(bien.costo_total())}"
             )
             p.drawString(60, y, detalle[:110])
             y -= 18

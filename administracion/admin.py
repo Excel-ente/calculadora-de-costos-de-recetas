@@ -17,6 +17,12 @@ from django.urls import reverse
 from import_export.formats.base_formats import XLSX
 
 
+def _fn(v, d=2):
+    """Formato numérico argentino: punto para miles, coma para decimal."""
+    s = f'{float(v):,.{d}f}'
+    return s.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
 # -----------------------------------------------------------------------------
 # # Herramienta para configurar el reporte de descarga de la receta
          
@@ -144,9 +150,20 @@ class ProductoRecetaInline(admin.StackedInline):
 
     # metodo para calcular el subtotal
     def Subtotal(self, obj):
-        moneda = Configuracion.objects.first().moneda
+        config = Configuracion.objects.first()
+        moneda = config.moneda if config else '$'
         costo_total = float(obj.precio_total())
-        return f'{moneda} {costo_total:,.2f}'
+        valor = f'{moneda} {_fn(costo_total)}'
+        if config and config.habilitar_segunda_moneda:
+            tc = float(config.tipo_de_cambio or 0)
+            if tc > 0:
+                val2 = costo_total * tc
+                redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+                return format_html(
+                    '{}<br><small style="color:#6c757d;">{} {}</small>',
+                    valor, config.segunda_moneda, _fn(val2, max(0, redondeo_2))
+                )
+        return valor
 
 
 class BienRecetaInline(admin.StackedInline):
@@ -189,28 +206,28 @@ class BienRecetaInline(admin.StackedInline):
     def Tiempo_en_horas(self, obj):
         if not obj.pk:
             return '-'
-        return f'{obj.horas_uso():,.2f} h'
+        return f'{_fn(obj.horas_uso())} h'
 
     def Costo_depreciacion(self, obj):
         if not obj.pk:
             return '-'
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_depreciacion():,.2f}'
+        return f'{moneda} {_fn(obj.costo_depreciacion())}'
 
     def Costo_electricidad(self, obj):
         if not obj.pk:
             return '-'
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_electricidad():,.2f}'
+        return f'{moneda} {_fn(obj.costo_electricidad())}'
 
     def Costo_total(self, obj):
         if not obj.pk:
             return '-'
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_total():,.2f}'
+        return f'{moneda} {_fn(obj.costo_total())}'
     
 # -----------------------------------------------------------------------------
 # Inline para GastosAdicionalesReceta, para ser usado dentro del admin de Receta
@@ -239,22 +256,62 @@ class ProductoAdmin(ImportExportModelAdmin):
     exclude = ('usuario',)
     list_per_page = 15
 
-    def Costo_Unitario(self,obj):
-        configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
-        if configuracion:
-            moneda = configuracion.moneda
-            return f'{moneda} {obj.costo_unitario():,.3f}'
-        return f'{obj.costo_unitario():,.3f}'
+    def _config(self, obj):
+        return Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
 
-    def Costo(self,obj):
-        configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
-        if configuracion:
-            moneda = configuracion.moneda
-            return f'{moneda} {obj.costo:,.2f}'
-        return f'{obj.costo:,.2f}'
+    def Costo_Unitario(self, obj):
+        config = self._config(obj)
+        moneda = config.moneda if config else '$'
+        cu = obj.costo_unitario()
+        valor = f'{moneda} {_fn(cu, 3)}'
+        if config and config.habilitar_segunda_moneda:
+            tc = float(config.tipo_de_cambio or 0)
+            if tc > 0:
+                val2 = cu * tc
+                redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+                return format_html(
+                    '{}<br><small style="color:#6c757d;">{} {}</small>',
+                    valor, config.segunda_moneda, _fn(val2, max(0, redondeo_2))
+                )
+        return valor
+    Costo_Unitario.short_description = 'Costo unitario'
+
+    def Costo_Unitario_Segunda_Moneda(self, obj):
+        config = Configuracion.objects.first()
+        if not config or not config.habilitar_segunda_moneda:
+            return '—'
+        val = obj.costo_unitario_segunda_moneda()
+        if val is None:
+            return '—'
+        redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+        return f'{config.segunda_moneda} {_fn(val, max(0, redondeo_2))}'
+    Costo_Unitario_Segunda_Moneda.short_description = 'Costo unitario (2ª moneda)'
+
+    def get_readonly_fields(self, request, obj=None):
+        base = list(super().get_readonly_fields(request, obj))
+        if 'Costo_Unitario' not in base:
+            base.append('Costo_Unitario')
+
+        return base
+
+    def Costo(self, obj):
+        config = self._config(obj)
+        moneda = config.moneda if config else '$'
+        costo = float(obj.costo)
+        valor = f'{moneda} {_fn(costo)}'
+        if config and config.habilitar_segunda_moneda:
+            tc = float(config.tipo_de_cambio or 0)
+            if tc > 0:
+                val2 = costo * tc
+                redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+                return format_html(
+                    '{}<br><small style="color:#6c757d;">{} {}</small>',
+                    valor, config.segunda_moneda, _fn(val2, max(0, redondeo_2))
+                )
+        return valor
 
     def Cantidad(self,obj):
-          return f'{obj.cantidad:,.2f}'
+          return _fn(obj.cantidad)
     
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "categoria":
@@ -269,10 +326,9 @@ class ProductoAdmin(ImportExportModelAdmin):
         super().save_model(request, obj, form, change)
 
     def get_list_display(self, request):
-        # Mostrar el campo 'usuario' solo a los superusuarios
-        if request.user.is_superuser:
-            return ('nombre','Cantidad','unidad_de_medida','Costo',)
-        return ('nombre','Cantidad','unidad_de_medida','Costo',)
+        base = ['nombre', 'Cantidad', 'unidad_de_medida', 'Costo', 'Costo_Unitario']
+
+        return base
 
     def get_list_filter(self, request):
         # Mostrar el campo 'usuario' solo a los superusuarios
@@ -363,24 +419,24 @@ class BienAdmin(ImportExportModelAdmin):
     def Costo_compra(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_compra:,.2f}'
+        return f'{moneda} {_fn(obj.costo_compra)}'
 
     def Potencia(self, obj):
-        return f'{obj.potencia_watts:,.2f} W'
+        return f'{_fn(obj.potencia_watts)} W'
 
     def Factor_uso(self, obj):
-        return f'{obj.factor_uso_porcentaje:,.2f}%'
+        return f'{_fn(obj.factor_uso_porcentaje)}%'
 
     def Costo_hora(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_hora_depreciacion():,.2f}'
+        return f'{moneda} {_fn(obj.costo_hora_depreciacion())}'
 
     def Costo_electrico_hora(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
         precio_kwh = configuracion.precio_kwh if configuracion else 0
-        return f'{moneda} {obj.costo_electricidad_por_hora(precio_kwh=precio_kwh):,.2f}'
+        return f'{moneda} {_fn(obj.costo_electricidad_por_hora(precio_kwh=precio_kwh))}'
 
     def save_model(self, request, obj, form, change):
         if not obj.pk:
@@ -421,48 +477,96 @@ class RecetaAdmin(ImportExportModelAdmin):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
         if configuracion:
             moneda = configuracion.moneda
-            return f'{moneda} {obj.costo_porcion():,.2f}'
-        return f'{obj.costo_porcion():,.2f}'
+            return f'{moneda} {_fn(obj.costo_porcion())}'
+        return _fn(obj.costo_porcion())
 
     # metodo para calcular el subtotal
     def Costo_total(self, obj):
-        configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
-        if configuracion:
-            moneda = configuracion.moneda
-            return f'{moneda} {obj.costo_receta():,.2f}'
-        return f'{obj.costo_receta():,.2f}'
+        configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
+        moneda = configuracion.moneda if configuracion else '$'
+        costo = obj.costo_receta()
+        valor = f'{moneda} {_fn(costo)}'
+        if configuracion and configuracion.habilitar_segunda_moneda:
+            tc = float(configuracion.tipo_de_cambio or 0)
+            if tc > 0:
+                val2 = float(costo) * tc
+                redondeo_2 = int(configuracion.redondeo_segunda_moneda or 0)
+                return format_html(
+                    '{}<br><small style="color:#6c757d;">{} {}</small>',
+                    valor, configuracion.segunda_moneda, _fn(val2, max(0, redondeo_2))
+                )
+        return valor
 
     def Costo_bienes(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_bienes():,.2f}'
+        return f'{moneda} {_fn(obj.costo_bienes())}'
 
     def Costo_bienes_depreciacion(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_bienes_depreciacion():,.2f}'
+        return f'{moneda} {_fn(obj.costo_bienes_depreciacion())}'
 
     def Costo_bienes_electricidad(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
         moneda = configuracion.moneda if configuracion else '$'
-        return f'{moneda} {obj.costo_bienes_electricidad():,.2f}'
+        return f'{moneda} {_fn(obj.costo_bienes_electricidad())}'
 
     # metodo para calcular el precio de venta
     def Precio_venta(self, obj):
-        configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
-        if configuracion:
-            moneda = configuracion.moneda
-            return f'{moneda} {obj.precio_venta_total():,.2f}'
-        return f'{obj.precio_venta_total():,.2f}'
+        configuracion = Configuracion.objects.filter(usuario=obj.usuario).first() or Configuracion.objects.first()
+        moneda = configuracion.moneda if configuracion else '$'
+        valor = f'{moneda} {_fn(obj.precio_venta_total())}'
+        if configuracion and configuracion.habilitar_segunda_moneda:
+            tc = float(configuracion.tipo_de_cambio or 0)
+            if tc > 0:
+                val2 = obj.precio_venta_total() * tc
+                redondeo_2 = int(configuracion.redondeo_segunda_moneda or 0)
+                return format_html(
+                    '{}<br><small style="color:#6c757d;">{} {}</small>',
+                    valor, configuracion.segunda_moneda, _fn(val2, max(0, redondeo_2))
+                )
+        return valor
+    Precio_venta.short_description = 'Precio venta'
     
     def Precio_porcion(self, obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
         if configuracion:
             moneda = configuracion.moneda
-            return f'{moneda} {obj.precio_venta_porcion_num():,.2f}'
-        return f'{obj.precio_venta_porcion_num():,.2f}'
+            return f'{moneda} {_fn(obj.precio_venta_porcion_num())}'
+        return _fn(obj.precio_venta_porcion_num())
 
     # método para botón de descargar
+    def Precio_venta_segunda_moneda(self, obj):
+        config = Configuracion.objects.first()
+        if not config or not config.habilitar_segunda_moneda:
+            return '—'
+        val = obj.precio_venta_total_segunda_moneda()
+        if val is None:
+            return '—'
+        redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+        return f'{config.segunda_moneda} {_fn(val, max(0, redondeo_2))}'
+    Precio_venta_segunda_moneda.short_description = 'Precio venta total (2ª moneda)'
+
+    def Precio_porcion_segunda_moneda(self, obj):
+        config = Configuracion.objects.first()
+        if not config or not config.habilitar_segunda_moneda:
+            return '—'
+        val = obj.precio_venta_porcion_segunda_moneda()
+        if val is None:
+            return '—'
+        redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+        return f'{config.segunda_moneda} {_fn(val, max(0, redondeo_2))}'
+    Precio_porcion_segunda_moneda.short_description = 'Precio porción (2ª moneda)'
+
+    def get_readonly_fields(self, request, obj=None):
+        base = list(super().get_readonly_fields(request, obj))
+        config = Configuracion.objects.first()
+        if config and config.habilitar_segunda_moneda:
+            for campo in ('Precio_venta_segunda_moneda', 'Precio_porcion_segunda_moneda'):
+                if campo not in base:
+                    base.append(campo)
+        return base
     def Descargar(self, obj):
         return format_html('<a class="btn btn-secondary" href="{}">⬇️ PDF</a>', reverse('descargar', args=[obj.id]))
     Descargar.short_description = "Acciones"
@@ -550,18 +654,18 @@ class ProductoRecetaAdmin(ImportExportModelAdmin):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
         if configuracion:
             moneda = configuracion.moneda
-            return f'{moneda} {obj.precio_unitario():,.2f}'
-        return f'{obj.precio_unitario():,.2f}'
+            return f'{moneda} {_fn(obj.precio_unitario())}'
+        return _fn(obj.precio_unitario())
 
     def Total(self,obj):
         configuracion = Configuracion.objects.filter(usuario=obj.usuario).first()
         if configuracion:
             moneda = configuracion.moneda
-            return f'{moneda} {obj.precio_total():,.2f}'
-        return f'{obj.precio_total():,.2f}'
+            return f'{moneda} {_fn(obj.precio_total())}'
+        return _fn(obj.precio_total())
 
     def Cantidad(self,obj):
-        return f'{obj.cantidad:,.2f}'
+        return _fn(obj.cantidad)
 
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):

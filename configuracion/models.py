@@ -46,6 +46,24 @@ class Configuracion(models.Model):
     usuario = models.CharField(max_length=120, null=True, blank=True)
     redondeo = models.DecimalField(max_digits=5, decimal_places=2, default=0, blank=False, null=False)
 
+    # --- Segunda moneda ---
+    habilitar_segunda_moneda = models.BooleanField(
+        default=False,
+        help_text='Activá esta opción para mostrar precios en dos monedas en todo el sistema.'
+    )
+    segunda_moneda = models.CharField(
+        max_length=10, blank=True, default='USD',
+        help_text='Símbolo o código de la segunda moneda (ej: USD, €, BTC).'
+    )
+    tipo_de_cambio = models.DecimalField(
+        max_digits=20, decimal_places=8, default=Decimal('1'),
+        help_text='Cuántos USD (o segunda moneda) equivalen a 1 unidad de moneda principal. Ej: si 1 $ = 0,00069 USD, ingresá 0.00069.'
+    )
+    redondeo_segunda_moneda = models.DecimalField(
+        max_digits=5, decimal_places=2, default=2, blank=False, null=False,
+        help_text='Decimales para mostrar en segunda moneda. Usá 2 para centavos, 0 para enteros, -2 para redondear a centenas.'
+    )
+
     def __str__(self):
         return f'{self.nombre_emprendimiento}'
 
@@ -53,6 +71,11 @@ class Configuracion(models.Model):
         configuracion_existente = Configuracion.objects.exclude(pk=self.pk).first()
         if configuracion_existente:
             raise ValidationError('Solo puede existir una configuracion en el sistema.')
+        if self.habilitar_segunda_moneda:
+            if not (self.segunda_moneda or '').strip():
+                raise ValidationError('Debe ingresar el símbolo de la segunda moneda.')
+            if self.tipo_de_cambio <= 0:
+                raise ValidationError('El tipo de cambio debe ser mayor a 0.')
 
     def save(self, *args, **kwargs):
         self.full_clean()

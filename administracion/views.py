@@ -13,6 +13,13 @@ import textwrap
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.db.models import Prefetch,Q
 from .Reporte import build_pdf_costos
+
+
+def _fn(v, d=2):
+    """Formato numérico argentino: punto para miles, coma para decimal."""
+    s = f'{float(v):,.{d}f}'
+    return s.replace(',', 'X').replace('.', ',').replace('X', '.')
+
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import admin
 import math
@@ -293,11 +300,11 @@ def build_simulador_pdf(response, plan, aggregated_result, gastos_total, config)
         # product name (wrap if too long)
         name = prod.nombre if hasattr(prod, 'nombre') else str(prod)
         p.drawString(product_left, y, name[:34])
-        p.drawRightString(need_right - column_padding, y, f"{need:,.3f} {unit}")
-        p.drawRightString(packunit_right - column_padding, y, f"{pack_size:,.3f} {unit}")
+        p.drawRightString(need_right - column_padding, y, f"{_fn(need, 3)} {unit}")
+        p.drawRightString(packunit_right - column_padding, y, f"{_fn(pack_size, 3)} {unit}")
         p.drawRightString(packs_right - column_padding, y, str(packs_to_buy))
-        p.drawRightString(cost_exact_right - column_padding, y, f"{currency} {cost_exact:,.2f}")
-        p.drawRightString(cost_buy_right - column_padding, y, f"{currency} {cost_buy:,.2f}")
+        p.drawRightString(cost_exact_right - column_padding, y, f"{currency} {_fn(cost_exact)}")
+        p.drawRightString(cost_buy_right - column_padding, y, f"{currency} {_fn(cost_buy)}")
         y -= 16
 
     total_purchase_budget = total_cost_buy + gastos_total
@@ -315,13 +322,13 @@ def build_simulador_pdf(response, plan, aggregated_result, gastos_total, config)
     p.drawString(left, y, 'Este bloque diferencia lo que consumes realmente de lo que necesitas tener disponible para comprar.')
     y -= 18
 
-    y = draw_summary_row(y, 'Costo exacto total de insumos usados', f'{currency} {total_cost_exact:,.2f}', INFO_BG)
-    y = draw_summary_row(y, 'Compra minima por paquetes completos', f'{currency} {total_cost_buy:,.2f}', WARNING_BG, WARNING_TEXT)
+    y = draw_summary_row(y, 'Costo exacto total de insumos usados', f'{currency} {_fn(total_cost_exact)}', INFO_BG)
+    y = draw_summary_row(y, 'Compra minima por paquetes completos', f'{currency} {_fn(total_cost_buy)}', WARNING_BG, WARNING_TEXT)
 
     if gastos_total:
-        y = draw_summary_row(y, 'Gastos adicionales del plan', f'{currency} {gastos_total:,.2f}', SUMMARY_BG)
+        y = draw_summary_row(y, 'Gastos adicionales del plan', f'{currency} {_fn(gastos_total)}', SUMMARY_BG)
 
-    y = draw_summary_row(y, 'Monto recomendado para salir a comprar', f'{currency} {total_purchase_budget:,.2f}', SUCCESS_BG, SUCCESS_TEXT)
+    y = draw_summary_row(y, 'Monto recomendado para salir a comprar', f'{currency} {_fn(total_purchase_budget)}', SUCCESS_BG, SUCCESS_TEXT)
 
     y -= 4
     p.setFillColor(MUTED)

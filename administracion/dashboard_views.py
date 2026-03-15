@@ -37,6 +37,14 @@ def dashboard_home(request):
     config = Configuracion.objects.first()
     moneda = config.moneda if config else '$'
     redondeo = int(config.redondeo or 0) if config else 0
+    redondeo_2 = int(config.redondeo_segunda_moneda or 0) if config else 0
+
+    # ========== SEGUNDA MONEDA ==========
+    segunda_moneda_habilitada = bool(
+        config and config.habilitar_segunda_moneda and float(config.tipo_de_cambio or 0) > 0
+    )
+    segunda_moneda_simbolo = config.segunda_moneda if (config and config.habilitar_segunda_moneda) else ''
+    tipo_de_cambio = float(config.tipo_de_cambio) if (config and float(config.tipo_de_cambio or 0) > 0) else 1
 
     # ========== MÉTRICAS GENERALES ==========
     total_recetas = recetas_query.count()
@@ -97,6 +105,9 @@ def dashboard_home(request):
                 'precio_venta': precio_venta,
                 'rentabilidad': receta.rentabilidad,
                 'porciones': receta.porciones,
+                'costo_total_2': round(costo * tipo_de_cambio, redondeo_2) if segunda_moneda_habilitada else None,
+                'costo_porcion_2': round(costo_porcion_val * tipo_de_cambio, redondeo_2) if segunda_moneda_habilitada else None,
+                'precio_venta_2': round(precio_venta * tipo_de_cambio, redondeo_2) if segunda_moneda_habilitada else None,
             })
         except Exception:
             pass
@@ -250,6 +261,14 @@ def dashboard_home(request):
 
     # ========== TOP INGREDIENTES POR COSTO ==========
     ingredientes_por_costo = sorted(productos_usados, key=lambda x: float(x['costo_total']), reverse=True)[:10]
+    # Agregar costo en segunda moneda a ingredientes
+    if segunda_moneda_habilitada:
+        for item in ingredientes_por_costo:
+            item['costo_total_2'] = round(float(item['costo_total']) * tipo_de_cambio, redondeo_2)
+    # Agregar costo en segunda moneda a productos sin usar
+    if segunda_moneda_habilitada:
+        for p in productos_sin_usar:
+            pass  # Se calcula en template via .costo / tipo_de_cambio (se usan los valores del modelo)
 
     # ========== RECETAS CON MÁS INGREDIENTES ==========
     # Usa los dicts ya en memoria — 0 queries adicionales
@@ -274,6 +293,11 @@ def dashboard_home(request):
         'total_categorias_receta': total_categorias_receta,
         'total_categorias_producto': total_categorias_producto,
         'moneda': moneda,
+
+        # Segunda moneda
+        'segunda_moneda_habilitada': segunda_moneda_habilitada,
+        'segunda_moneda_simbolo': segunda_moneda_simbolo,
+        'tipo_de_cambio': tipo_de_cambio,
         
         # Recetas destacadas
         'recetas_mas_caras': recetas_mas_caras,

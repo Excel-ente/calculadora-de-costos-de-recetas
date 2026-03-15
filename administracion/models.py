@@ -88,11 +88,28 @@ class Producto(models.Model):
     usuario = models.CharField(max_length=120, null=True, blank=True)
 
     def __str__(self):
-        return f'{self.nombre} x {self.cantidad} {self.unidad_de_medida} | costo unitario {self.costo_unitario():,.2f}'
+        v = self.costo_unitario()
+        s = f'{float(v):,.2f}'
+        fmt = s.replace(',', 'X').replace('.', ',').replace('X', '.')
+        return f'{self.nombre} x {self.cantidad} {self.unidad_de_medida} | costo unitario {fmt}'
 
     def costo_unitario(self):
         """ Calcula el costo unitario del producto. """
         return float(self.costo) / float(self.cantidad)
+
+    def costo_unitario_segunda_moneda(self):
+        """ Calcula el costo unitario en la segunda moneda configurada. Retorna None si no está habilitada. """
+        try:
+            config = Configuracion.objects.first()
+            if not config or not config.habilitar_segunda_moneda:
+                return None
+            tc = float(config.tipo_de_cambio)
+            if tc <= 0:
+                return None
+            redondeo_2 = int(config.redondeo_segunda_moneda or 0)
+            return round(self.costo_unitario() * tc, redondeo_2)
+        except Exception:
+            return None
 
     def clean(self):
         if self.costo < 0:
@@ -256,7 +273,45 @@ class Receta(models.Model):
         redondeo = int(configuracion.redondeo or 0) if configuracion else 0
         total = float(self.precio_venta_porcion()) * float(self.porciones)
         return round(total,redondeo)
-    
+
+    def _get_tipo_cambio(self):
+        """ Retorna el tipo de cambio si la segunda moneda está activa, sino None. """
+        try:
+            config = self.obtener_configuracion()
+            if not config or not config.habilitar_segunda_moneda:
+                return None
+            tc = float(config.tipo_de_cambio)
+            return tc if tc > 0 else None
+        except Exception:
+            return None
+
+    def costo_porcion_segunda_moneda(self):
+        """ Costo por porción en la segunda moneda configurada. """
+        tc = self._get_tipo_cambio()
+        if tc is None:
+            return None
+        config = self.obtener_configuracion()
+        redondeo_2 = int(config.redondeo_segunda_moneda or 0) if config else 0
+        return round(self.costo_porcion() * tc, redondeo_2)
+
+    def precio_venta_porcion_segunda_moneda(self):
+        """ Precio de venta por porción en la segunda moneda configurada. """
+        tc = self._get_tipo_cambio()
+        if tc is None:
+            return None
+        config = self.obtener_configuracion()
+        redondeo_2 = int(config.redondeo_segunda_moneda or 0) if config else 0
+        return round(self.precio_venta_porcion_num() * tc, redondeo_2)
+
+    def precio_venta_total_segunda_moneda(self):
+        """ Precio de venta total en la segunda moneda configurada. """
+        tc = self._get_tipo_cambio()
+        if tc is None:
+            return None
+        config = self.obtener_configuracion()
+        redondeo_2 = int(config.redondeo_segunda_moneda or 0) if config else 0
+        return round(self.precio_venta_total() * tc, redondeo_2)
+
     def clean(self):
         # Validar que rentabilidad sea un número válido
         if not isinstance(self.rentabilidad, Decimal):

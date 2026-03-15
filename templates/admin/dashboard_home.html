@@ -592,7 +592,7 @@
                     <div class="receta-nombre">
                         <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
                         <div class="receta-actions">
-                            <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}</span>
+                            <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_total_2 is not None %}<br><small>{{ segunda_moneda_simbolo }} {{ item.costo_total_2|floatformat:2|intcomma }}</small>{% endif %}</span>
                             <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>
@@ -603,7 +603,7 @@
                     </div>
                     <div class="receta-detalles">
                         Porciones: {{ item.porciones }} | 
-                        Costo/porción: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} |
+                        Costo/porción: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_porcion_2 is not None %} / {{ segunda_moneda_simbolo }} {{ item.costo_porcion_2|floatformat:2|intcomma }}{% endif %} |
                         Rentabilidad: {{ item.rentabilidad }}%
                     </div>
                 </div>
@@ -622,7 +622,7 @@
                     <div class="receta-nombre">
                         <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.receta.nombre }}</span>
                         <div class="receta-actions">
-                            <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}</span>
+                            <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_total_2 is not None %}<br><small>{{ segunda_moneda_simbolo }} {{ item.costo_total_2|floatformat:2|intcomma }}</small>{% endif %}</span>
                             <a href="{% url 'descargar' item.receta.pk %}" class="btn-action" style="background-color: #e74c3c;" title="Descargar PDF">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>
@@ -633,7 +633,7 @@
                     </div>
                     <div class="receta-detalles">
                         Porciones: {{ item.porciones }} | 
-                        Costo/porción: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} |
+                        Costo/porción: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_porcion_2 is not None %} / {{ segunda_moneda_simbolo }} {{ item.costo_porcion_2|floatformat:2|intcomma }}{% endif %} |
                         Rentabilidad: {{ item.rentabilidad }}%
                     </div>
                 </div>
@@ -664,8 +664,8 @@
                         </div>
                     </div>
                     <div class="receta-detalles">
-                        Costo: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} | 
-                        Venta: {{ moneda }}{{ item.precio_venta|floatformat:2|intcomma }}
+                        Costo: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_porcion_2 is not None %} / {{ segunda_moneda_simbolo }} {{ item.costo_porcion_2|floatformat:2|intcomma }}{% endif %} | 
+                        Venta: {{ moneda }}{{ item.precio_venta|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.precio_venta_2 is not None %} / {{ segunda_moneda_simbolo }} {{ item.precio_venta_2|floatformat:2|intcomma }}{% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -693,8 +693,8 @@
                         </div>
                     </div>
                     <div class="receta-detalles">
-                        Costo: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }} | 
-                        Venta: {{ moneda }}{{ item.precio_venta|floatformat:2|intcomma }}
+                        Costo: {{ moneda }}{{ item.costo_porcion|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_porcion_2 is not None %} / {{ segunda_moneda_simbolo }} {{ item.costo_porcion_2|floatformat:2|intcomma }}{% endif %} | 
+                        Venta: {{ moneda }}{{ item.precio_venta|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.precio_venta_2 is not None %} / {{ segunda_moneda_simbolo }} {{ item.precio_venta_2|floatformat:2|intcomma }}{% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -804,7 +804,7 @@
                 <div class="receta-nombre">
                     <span class="receta-nombre-text">{{ forloop.counter }}. {{ item.producto.nombre }}</span>
                     <div class="receta-actions">
-                        <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}</span>
+                        <span class="receta-precio">{{ moneda }}{{ item.costo_total|floatformat:2|intcomma }}{% if segunda_moneda_habilitada and item.costo_total_2 is not None %}<br><small>{{ segunda_moneda_simbolo }} {{ item.costo_total_2|floatformat:2|intcomma }}</small>{% endif %}</span>
                         <a href="{% url 'admin:administracion_producto_change' item.producto.pk %}" class="btn-action" target="_blank">
                             <i class="fas fa-external-link-alt"></i> Ver
                         </a>
