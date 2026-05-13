@@ -45,18 +45,24 @@
     
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         gap: 15px;
         margin-bottom: 20px;
+        align-items: stretch;
     }
     
     .stat-box {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 15px;
+        padding: 16px;
         border-radius: 8px;
-        text-align: center;
+        text-align: left;
         box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+        min-height: 168px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
     }
     
     .stat-box.green {
@@ -72,9 +78,10 @@
     }
     
     .stat-number {
-        font-size: 1.8em;
+        font-size: 1.85em;
         font-weight: bold;
-        margin: 8px 0;
+        line-height: 1.1;
+        margin: 0;
     }
     
     .stat-label {
@@ -82,6 +89,87 @@
         opacity: 0.9;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+    }
+
+    .stat-main {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .stat-main-label {
+        font-size: 0.85em;
+        opacity: 0.86;
+        text-transform: uppercase;
+    }
+
+    .stat-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .stat-detail-grid.single {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-detail {
+        min-width: 0;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255,255,255,0.25);
+    }
+
+    .stat-detail-wide {
+        grid-column: 1 / -1;
+    }
+
+    .stat-detail-label {
+        display: block;
+        font-size: 0.72em;
+        line-height: 1.2;
+        opacity: 0.82;
+        text-transform: uppercase;
+    }
+
+    .stat-detail-value {
+        display: block;
+        margin-top: 3px;
+        font-size: 1em;
+        line-height: 1.15;
+        font-weight: bold;
+        word-break: break-word;
+    }
+
+    .stat-detail-value.with-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .stat-action-btn {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        border-radius: 6px;
+        color: white;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.32);
+        text-decoration: none;
+        font-size: 0.78em;
+        transition: background 0.2s, transform 0.2s;
+    }
+
+    .stat-action-btn:hover,
+    .stat-action-btn:focus {
+        color: white;
+        background: rgba(255,255,255,0.3);
+        text-decoration: none;
+        transform: translateY(-1px);
     }
     
     .receta-item {
@@ -254,6 +342,7 @@
         
         .stat-box {
             padding: 12px 8px;
+            min-height: 178px;
         }
         
         .stat-number {
@@ -262,6 +351,16 @@
         
         .stat-label {
             font-size: 0.75em;
+        }
+
+        .stat-main {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-detail-grid {
+            grid-template-columns: 1fr;
         }
         
         .metric-card {
@@ -534,22 +633,99 @@
     <div class="stats-grid">
         <div class="stat-box">
             <div class="stat-label">Total Recetas</div>
-            <div class="stat-number">{{ total_recetas }}</div>
+            <div class="stat-main">
+                <span class="stat-main-label">Total</span>
+                <span class="stat-number">{{ total_recetas }}</span>
+            </div>
+            <div class="stat-detail-grid single">
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Costo promedio por receta</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ promedio_costo_receta|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Costo promedio por porción</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ promedio_costo_porcion|floatformat:0|intcomma }}</span>
+                </div>
+            </div>
         </div>
         
         <div class="stat-box green">
             <div class="stat-label">Total Productos</div>
-            <div class="stat-number">{{ total_productos }}</div>
+            <div class="stat-main">
+                <span class="stat-main-label">Total</span>
+                <span class="stat-number">{{ total_productos }}</span>
+            </div>
+            <div class="stat-detail-grid">
+                <div class="stat-detail stat-detail-wide">
+                    <span class="stat-detail-label">Precio promedio</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ precio_promedio_producto|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Más caro</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ precio_producto_mas_caro|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Más bajo</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ precio_producto_mas_bajo|floatformat:0|intcomma }}</span>
+                </div>
+            </div>
         </div>
         
         <div class="stat-box blue">
-            <div class="stat-label">Costo Promedio</div>
-            <div class="stat-number">{{ moneda }}{{ promedio_costo_receta|floatformat:0|intcomma }}</div>
+            <div class="stat-label">Bienes de Producción</div>
+            <div class="stat-main">
+                <span class="stat-main-label">Total asignado</span>
+                <span class="stat-number">{{ moneda }}{{ total_bienes_produccion|floatformat:0|intcomma }}</span>
+            </div>
+            <div class="stat-detail-grid">
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Electricidad</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ total_bienes_electricidad|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Depreciación</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ total_bienes_depreciacion|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Recetas con bienes</span>
+                    <span class="stat-detail-value">{{ recetas_con_bienes }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">kWh configurado</span>
+                    <span class="stat-detail-value with-action">
+                        <span>{{ moneda }}{{ precio_kwh|floatformat:0|intcomma }}</span>
+                        <a class="stat-action-btn" href="{% url 'admin:configuracion_configuracion_changelist' %}" title="Cambiar costo por kWh" aria-label="Cambiar costo por kWh">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                    </span>
+                </div>
+            </div>
         </div>
         
         <div class="stat-box orange">
             <div class="stat-label">Rentabilidad Promedio</div>
-            <div class="stat-number">{{ promedio_rentabilidad|floatformat:1 }}%</div>
+            <div class="stat-main">
+                <span class="stat-main-label">Promedio</span>
+                <span class="stat-number">{{ promedio_rentabilidad|floatformat:1 }}%</span>
+            </div>
+            <div class="stat-detail-grid">
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Venta prom. por porción</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ promedio_precio_venta|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Margen prom. por porción</span>
+                    <span class="stat-detail-value">{{ moneda }}{{ promedio_margen_porcion|floatformat:0|intcomma }}</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Mayor</span>
+                    <span class="stat-detail-value">{{ rentabilidad_mayor|floatformat:1 }}%</span>
+                </div>
+                <div class="stat-detail">
+                    <span class="stat-detail-label">Menor</span>
+                    <span class="stat-detail-value">{{ rentabilidad_menor|floatformat:1 }}%</span>
+                </div>
+            </div>
         </div>
     </div>
     

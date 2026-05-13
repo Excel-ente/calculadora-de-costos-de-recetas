@@ -10,7 +10,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, Sum, Avg, Q, F, DecimalField
 from django.db.models.functions import Coalesce
 from administracion.dashboard_access import construir_contexto_acceso_movil
-from administracion.models import Receta, Producto, ProductoReceta, Categoria, CategoriaReceta, GastosAdicionalesReceta
+from administracion.models import Receta, Producto, ProductoReceta, Categoria, CategoriaReceta, GastosAdicionalesReceta, BienReceta
+from administracion.services_bienes import calcular_costo_bien_receta
 from configuracion.models import Configuracion
 from decimal import Decimal
 from collections import Counter
@@ -38,6 +39,7 @@ def dashboard_home(request):
     moneda = config.moneda if config else '$'
     redondeo = int(config.redondeo or 0) if config else 0
     redondeo_2 = int(config.redondeo_segunda_moneda or 0) if config else 0
+    precio_kwh = Decimal(str(getattr(config, 'precio_kwh', 0) or 0)) if config else Decimal('0')
 
     # ========== SEGUNDA MONEDA ==========
     segunda_moneda_habilitada = bool(
@@ -60,6 +62,9 @@ def dashboard_home(request):
     all_gastos = list(
         GastosAdicionalesReceta.objects.filter(receta__in=recetas_query)
     )
+    all_bienes_receta = list(
+        BienReceta.objects.filter(receta__in=recetas_query).select_related('bien')
+    )
 
     pr_by_receta = {}
     for pr in all_pr:
@@ -69,6 +74,29 @@ def dashboard_home(request):
     for g in all_gastos:
         gastos_by_receta.setdefault(g.receta_id, []).append(g)
 
+    bienes_totales_by_receta = {}
+    for relacion_bien in all_bienes_receta:
+        try:
+            calculo_bien = calcular_costo_bien_receta(
+                relacion_bien.bien,
+                relacion_bien.tiempo_uso_cantidad,
+                relacion_bien.tiempo_uso_unidad,
+                precio_kwh=precio_kwh,
+                incluir_depreciacion=relacion_bien.incluir_depreciacion,
+                incluir_electricidad=relacion_bien.incluir_electricidad,
+            )
+        except Exception:
+            continue
+
+        totales_bien = bienes_totales_by_receta.setdefault(relacion_bien.receta_id, {
+            'total_bienes': Decimal('0'),
+            'total_depreciacion': Decimal('0'),
+            'total_electricidad': Decimal('0'),
+        })
+        totales_bien['total_bienes'] += calculo_bien['costo_total']
+        totales_bien['total_depreciacion'] += calculo_bien['depreciacion']
+        totales_bien['total_electricidad'] += calculo_bien['costo_electricidad']
+
     # ========== RECETAS MÁS CARAS Y MÁS BARATAS ==========
     # select_related('categoria') evita N+1 al acceder receta.categoria.nombre más adelante
     recetas_con_costo = []
@@ -76,14 +104,18 @@ def dashboard_home(request):
         try:
             pr_list = pr_by_receta.get(receta.id, [])
             gastos_list = gastos_by_receta.get(receta.id, [])
+            bienes_totales = bienes_totales_by_receta.get(receta.id, {})
 
             # Calcular costo total sin tocar la BD (usa datos ya prefetcheados)
-            total_productos = sum(pr.precio_total() for pr in pr_list)
+            total_insumos_receta = sum(pr.precio_total() for pr in pr_list)
             suma_adicionales = sum(
                 float(g.importe) if g.importe is not None else 0
                 for g in gastos_list
             )
-            costo = total_productos + suma_adicionales
+            costo_bienes = float(bienes_totales.get('total_bienes', Decimal('0')))
+            costo_depreciacion = float(bienes_totales.get('total_depreciacion', Decimal('0')))
+            costo_electricidad = float(bienes_totales.get('total_electricidad', Decimal('0')))
+            costo = total_insumos_receta + suma_adicionales + costo_bienes
 
             porciones = float(receta.porciones) if receta.porciones else 1
             costo_porcion_val = round(costo / porciones, redondeo)
@@ -105,6 +137,9 @@ def dashboard_home(request):
                 'precio_venta': precio_venta,
                 'rentabilidad': receta.rentabilidad,
                 'porciones': receta.porciones,
+                'costo_bienes': costo_bienes,
+                'costo_depreciacion': costo_depreciacion,
+                'costo_electricidad': costo_electricidad,
                 'costo_total_2': round(costo * tipo_de_cambio, redondeo_2) if segunda_moneda_habilitada else None,
                 'costo_porcion_2': round(costo_porcion_val * tipo_de_cambio, redondeo_2) if segunda_moneda_habilitada else None,
                 'precio_venta_2': round(precio_venta * tipo_de_cambio, redondeo_2) if segunda_moneda_habilitada else None,
@@ -235,12 +270,27 @@ def dashboard_home(request):
     # ========== ESTADÍSTICAS DE COSTOS ==========
     if recetas_con_costo:
         promedio_costo_receta = sum(r['costo_total'] for r in recetas_con_costo) / len(recetas_con_costo)
+        promedio_costo_porcion = sum(r['costo_porcion'] for r in recetas_con_costo) / len(recetas_con_costo)
         promedio_rentabilidad = sum(float(r['rentabilidad']) for r in recetas_con_costo) / len(recetas_con_costo)
         promedio_porciones = sum(float(r['porciones']) for r in recetas_con_costo) / len(recetas_con_costo)
+        promedio_precio_venta = sum(r['precio_venta'] for r in recetas_con_costo) / len(recetas_con_costo)
+        promedio_margen_porcion = sum((r['precio_venta'] - r['costo_porcion']) for r in recetas_con_costo) / len(recetas_con_costo)
+        rentabilidad_mayor = max(float(r['rentabilidad']) for r in recetas_con_costo)
+        rentabilidad_menor = min(float(r['rentabilidad']) for r in recetas_con_costo)
     else:
         promedio_costo_receta = 0
+        promedio_costo_porcion = 0
         promedio_rentabilidad = 0
         promedio_porciones = 0
+        promedio_precio_venta = 0
+        promedio_margen_porcion = 0
+        rentabilidad_mayor = 0
+        rentabilidad_menor = 0
+
+    total_bienes_depreciacion = sum(r['costo_depreciacion'] for r in recetas_con_costo)
+    total_bienes_electricidad = sum(r['costo_electricidad'] for r in recetas_con_costo)
+    total_bienes_produccion = total_bienes_depreciacion + total_bienes_electricidad
+    recetas_con_bienes = sum(1 for r in recetas_con_costo if r['costo_bienes'] > 0)
 
     # ========== DISTRIBUCIÓN POR CATEGORÍAS ==========
     # recetas_query ya fue evaluada con select_related('categoria') arriba — 0 queries extra
@@ -253,11 +303,22 @@ def dashboard_home(request):
     # select_related('categoria') para evitar N+1 al acceder producto.categoria.nombre
     productos_por_categoria = {}
     productos_por_unidad = {}
-    for producto in productos_query.select_related('categoria'):
+    productos_list = list(productos_query.select_related('categoria'))
+    for producto in productos_list:
         cat_nombre = producto.categoria.nombre if producto.categoria else 'Sin categoría'
         productos_por_categoria[cat_nombre] = productos_por_categoria.get(cat_nombre, 0) + 1
         unidad = producto.unidad_de_medida
         productos_por_unidad[unidad] = productos_por_unidad.get(unidad, 0) + 1
+
+    precios_productos = [float(producto.costo) for producto in productos_list if producto.costo is not None]
+    if precios_productos:
+        precio_promedio_producto = sum(precios_productos) / len(precios_productos)
+        precio_producto_mas_caro = max(precios_productos)
+        precio_producto_mas_bajo = min(precios_productos)
+    else:
+        precio_promedio_producto = 0
+        precio_producto_mas_caro = 0
+        precio_producto_mas_bajo = 0
 
     # ========== TOP INGREDIENTES POR COSTO ==========
     ingredientes_por_costo = sorted(productos_usados, key=lambda x: float(x['costo_total']), reverse=True)[:10]
@@ -318,8 +379,21 @@ def dashboard_home(request):
         
         # Estadísticas
         'promedio_costo_receta': promedio_costo_receta,
+        'promedio_costo_porcion': promedio_costo_porcion,
         'promedio_rentabilidad': promedio_rentabilidad,
         'promedio_porciones': promedio_porciones,
+        'promedio_precio_venta': promedio_precio_venta,
+        'promedio_margen_porcion': promedio_margen_porcion,
+        'rentabilidad_mayor': rentabilidad_mayor,
+        'rentabilidad_menor': rentabilidad_menor,
+        'precio_promedio_producto': precio_promedio_producto,
+        'precio_producto_mas_caro': precio_producto_mas_caro,
+        'precio_producto_mas_bajo': precio_producto_mas_bajo,
+        'total_bienes_depreciacion': total_bienes_depreciacion,
+        'total_bienes_electricidad': total_bienes_electricidad,
+        'total_bienes_produccion': total_bienes_produccion,
+        'recetas_con_bienes': recetas_con_bienes,
+        'precio_kwh': precio_kwh,
         
         # Distribuciones
         'recetas_por_categoria': recetas_por_categoria,

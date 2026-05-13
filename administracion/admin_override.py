@@ -29,6 +29,11 @@ def custom_admin_index(request, extra_context=None):
     recetas_query = Receta.objects.all()
     productos_query = Producto.objects.all()
     
+    # Obtener configuración para moneda y bienes de producción
+    config = Configuracion.objects.first()
+    moneda = config.moneda if config else '$'
+    precio_kwh = Decimal(str(getattr(config, 'precio_kwh', 0) or 0)) if config else Decimal('0')
+
     # ========== MÉTRICAS GENERALES ==========
     total_recetas = recetas_query.count()
     total_productos = productos_query.count()
@@ -41,6 +46,7 @@ def custom_admin_index(request, extra_context=None):
         try:
             costo = receta.costo_receta()
             precio_venta = receta.precio_venta_porcion()
+            desglose = receta.desglose_costos()
             recetas_con_costo.append({
                 'receta': receta,
                 'costo_total': costo,
@@ -48,6 +54,9 @@ def custom_admin_index(request, extra_context=None):
                 'precio_venta': precio_venta,
                 'rentabilidad': receta.rentabilidad,
                 'porciones': receta.porciones,
+                'costo_bienes': float(desglose.get('bienes_total', 0) or 0),
+                'costo_depreciacion': float(desglose.get('bienes_depreciacion', 0) or 0),
+                'costo_electricidad': float(desglose.get('bienes_electricidad', 0) or 0),
             })
         except Exception as e:
             print(f"Error calculando costo de {receta.nombre}: {e}")
@@ -178,12 +187,38 @@ def custom_admin_index(request, extra_context=None):
     # ========== ESTADÍSTICAS DE COSTOS ==========
     if recetas_con_costo:
         promedio_costo_receta = sum(r['costo_total'] for r in recetas_con_costo) / len(recetas_con_costo)
+        promedio_costo_porcion = sum(r['costo_porcion'] for r in recetas_con_costo) / len(recetas_con_costo)
         promedio_rentabilidad = sum(float(r['rentabilidad']) for r in recetas_con_costo) / len(recetas_con_costo)
         promedio_porciones = sum(float(r['porciones']) for r in recetas_con_costo) / len(recetas_con_costo)
+        promedio_precio_venta = sum(r['precio_venta'] for r in recetas_con_costo) / len(recetas_con_costo)
+        promedio_margen_porcion = sum((r['precio_venta'] - r['costo_porcion']) for r in recetas_con_costo) / len(recetas_con_costo)
+        rentabilidad_mayor = max(float(r['rentabilidad']) for r in recetas_con_costo)
+        rentabilidad_menor = min(float(r['rentabilidad']) for r in recetas_con_costo)
     else:
         promedio_costo_receta = 0
+        promedio_costo_porcion = 0
         promedio_rentabilidad = 0
         promedio_porciones = 0
+
+        promedio_precio_venta = 0
+        promedio_margen_porcion = 0
+        rentabilidad_mayor = 0
+        rentabilidad_menor = 0
+
+    total_bienes_depreciacion = sum(r['costo_depreciacion'] for r in recetas_con_costo)
+    total_bienes_electricidad = sum(r['costo_electricidad'] for r in recetas_con_costo)
+    total_bienes_produccion = total_bienes_depreciacion + total_bienes_electricidad
+    recetas_con_bienes = sum(1 for r in recetas_con_costo if r['costo_bienes'] > 0)
+
+    precios_productos = [float(producto.costo) for producto in productos_query if producto.costo is not None]
+    if precios_productos:
+        precio_promedio_producto = sum(precios_productos) / len(precios_productos)
+        precio_producto_mas_caro = max(precios_productos)
+        precio_producto_mas_bajo = min(precios_productos)
+    else:
+        precio_promedio_producto = 0
+        precio_producto_mas_caro = 0
+        precio_producto_mas_bajo = 0
     
     # ========== DISTRIBUCIÓN POR CATEGORÍAS ==========
     recetas_por_categoria = {}
@@ -225,10 +260,6 @@ def custom_admin_index(request, extra_context=None):
     
     recetas_mas_ingredientes = sorted(recetas_con_ingredientes, key=lambda x: x['num_ingredientes'], reverse=True)[:5]
     
-    # Obtener configuración para moneda
-    config = Configuracion.objects.first()
-    moneda = config.moneda if config else '$'
-    
     # ========== ACTUALIZAR CONTEXTO ==========
     extra_context.update({
         # IMPORTANTE: Mantener las apps del admin
@@ -260,8 +291,21 @@ def custom_admin_index(request, extra_context=None):
         
         # Estadísticas
         'promedio_costo_receta': promedio_costo_receta,
+        'promedio_costo_porcion': promedio_costo_porcion,
         'promedio_rentabilidad': promedio_rentabilidad,
         'promedio_porciones': promedio_porciones,
+        'promedio_precio_venta': promedio_precio_venta,
+        'promedio_margen_porcion': promedio_margen_porcion,
+        'rentabilidad_mayor': rentabilidad_mayor,
+        'rentabilidad_menor': rentabilidad_menor,
+        'precio_promedio_producto': precio_promedio_producto,
+        'precio_producto_mas_caro': precio_producto_mas_caro,
+        'precio_producto_mas_bajo': precio_producto_mas_bajo,
+        'total_bienes_depreciacion': total_bienes_depreciacion,
+        'total_bienes_electricidad': total_bienes_electricidad,
+        'total_bienes_produccion': total_bienes_produccion,
+        'recetas_con_bienes': recetas_con_bienes,
+        'precio_kwh': precio_kwh,
         
         # Distribuciones
         'recetas_por_categoria': recetas_por_categoria,
