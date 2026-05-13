@@ -10,6 +10,7 @@ Esta carpeta reúne la documentación complementaria del proyecto para mantener 
 - [Dashboard](dashboard.md)
 - [Resumen del dashboard](dashboard-resumen.md)
 - [Especificación funcional de bienes](funcionalidad-bienes.md)
+- [Servicios opcionales](servicios-opcionales.md)
 
 ## Criterio de organización
 

@@ -25,7 +25,8 @@ Ideal para emprendedores gastronómicos, pasteleros y chefs.
 7. [Uso diario](#️-uso-diario)
 8. [Documentación](#-documentación)
 9. [Contribuir al proyecto](#-contribuir-al-proyecto)
-10. [Autor y créditos](#-autor-y-créditos)
+10. [Servicios opcionales](#️-servicios-opcionales)
+11. [Autor y créditos](#-autor-y-créditos)
 
 ---
 
@@ -359,6 +360,7 @@ La documentación complementaria del proyecto está organizada en la carpeta [`d
 - [Resumen del dashboard](docs/dashboard-resumen.md)
 - [Especificación funcional de bienes](docs/funcionalidad-bienes.md)
 - [Segunda moneda (doble divisa)](docs/segunda-moneda.md)
+- [Servicios opcionales](docs/servicios-opcionales.md)
 
 ---
 
@@ -396,6 +398,32 @@ La documentación complementaria del proyecto está organizada en la carpeta [`d
 
 ---
 
+## ☁️ Servicios opcionales
+
+Este proyecto es gratuito y abierto para la comunidad. Podés usarlo, estudiarlo, modificarlo y seguir los tutoriales de [Excel-ente](https://www.youtube.com/@excel-ente) sin necesidad de contratar ningún servicio.
+
+Si querés usarlo en tu negocio sin ocuparte de la instalación, el servidor, los backups o el mantenimiento técnico, desde [ADEMA Sistemas](https://ademasistemas.com) podemos ayudarte a gestionarlo en la nube.
+
+También podemos adaptar la herramienta a tu forma de trabajar: nuevos reportes, módulos personalizados, cambios de diseño, permisos, flujos internos o una versión privada para tu emprendimiento.
+
+Servicios que podés consultar, siempre de forma opcional:
+
+- instalación asistida;
+- instancia propia en la nube;
+- dominio propio;
+- backups;
+- mantenimiento;
+- soporte técnico;
+- personalización de módulos;
+- reportes a medida;
+- mejoras para una versión privada del sistema.
+
+¿Querés que gestionemos tu aplicación en la nube o necesitás modificaciones para tu propia versión del sistema? Consultanos en [ADEMA Sistemas](https://ademasistemas.com).
+
+Más información: [Servicios opcionales](docs/servicios-opcionales.md).
+
+---
+
 ## 👨‍💻 Autor y créditos
 
 **Kevin Turkienich**  
@@ -415,7 +443,7 @@ Este proyecto está bajo la **Licencia Apache 2.0** — podés usarlo, modificar
 
 Adicionalmente, toda distribución o instancia pública debe conservar la atribución:
 
-**"Esta herramienta la trae EXCEL-ENTE en colaboración con ADEMA Sistemas."**
+**"Esta herramienta la trae Excel-ente en colaboración con ADEMA Sistemas."**
 
 Ver el archivo [LICENSE](LICENSE) para más detalles.
 

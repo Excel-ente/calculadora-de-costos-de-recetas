@@ -129,6 +129,8 @@ Dicho de forma simple:
 
 **ese archivo es el botón de arranque práctico de la aplicación en Windows.**
 
+Si prefiere no encargarse de instalación, actualizaciones, backups o servidor, **ADEMA Sistemas** puede ayudarle a gestionar una instancia propia en la nube. Es un servicio opcional: la app sigue siendo gratuita y abierta para usarla localmente con los tutoriales de **Excel-ente**.
+
 ---
 
 ## 6. Qué pasa la primera vez que la usa
@@ -613,4 +615,4 @@ La mejor manera de sacarle el jugo a esta app es:
 
 ## 29. Atribución
 
-Este proyecto es traído por **EXCEL-ENTE** en colaboración con **ADEMA Sistemas**.
+Este proyecto es traído por **Excel-ente** en colaboración con **ADEMA Sistemas**.
